@@ -21,8 +21,8 @@
     "build": "react-scripts build",
     "predeploy": "pnpm run build",
     "deploy": "gh-pages -d build",
-    "deploy1": "pnpm run build && gh-pages -d build"
-  },
+    "publish": "pnpm run build && rm -rf docs && cp -r build docs && touch docs/.nojekyll"
+    },
   "browserslist": {
     "production": [
       ">0.2%",
