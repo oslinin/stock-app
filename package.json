@@ -15,14 +15,14 @@
     "react-scripts": "5.0.1",
     "web-vitals": "^2.1.4"
   },
-  "homepage": "https://oslinin.github.io/stock-app",
+  "homepage": "https://oslinin.github.io/stock-app/",
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
     "predeploy": "pnpm run build",
     "deploy": "gh-pages -d build",
     "publish": "pnpm run build && rm -rf docs && cp -r build docs && touch docs/.nojekyll"
-    },
+  },
   "browserslist": {
     "production": [
       ">0.2%",

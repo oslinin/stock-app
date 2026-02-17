@@ -28,6 +28,7 @@ This project is a stock price tracker that allows users to enter a stock symbol 
 
 In the project directory, you can run:
 
-- `npm start`: Runs the app in development mode at [http://localhost:3000](http://localhost:3000).
-- `npm run build`: Builds the app for production to the `build` folder.
-- `npm run deploy`: Deploys the application to GitHub Pages.
+- `pnpm start`: Runs the app in development mode at [http://localhost:3000](http://localhost:3000).
+- `pnpm run build`: Builds the app for production to the `build` folder.
+- `pnpm run publish`: Builds and updates the `docs/` folder for GitHub Pages deployment.
+- `pnpm run deploy`: Deploys the application to the `gh-pages` branch using the `build/` folder.
