@@ -1,5 +1,9 @@
 # Stock App
 
+Based on the article: [Build & Publish Your First Stock App for FREE](https://medium.com/@wl8380/build-publish-your-first-stock-app-for-free-df59820998aa?sk=655af74c972a5fd37ca0ba0d0133d264)
+
+This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+
 A simple React application to fetch and display real-time stock data using the Alpha Vantage API.
 
 ## Project Overview
