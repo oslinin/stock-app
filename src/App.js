@@ -73,28 +73,37 @@ function App() {
   };
 
   return (
-    <div className="App">
-      <h1>📈 My Stock App</h1>
-      <input
-        value={symbol}
-        onChange={(e) => setSymbol(e.target.value.toUpperCase())}
-        placeholder="Enter stock symbol (e.g., AAPL)"
-      />
-      <button onClick={fetchStock}>Search</button>
+    <div className="app-layout">
+      <nav className="sidebar">
+        <ul>
+          <li>Stock app</li>
+        </ul>
+      </nav>
+      <main className="main-content">
+        <div className="App">
+          <h1>📈 My Stock App</h1>
+          <input
+            value={symbol}
+            onChange={(e) => setSymbol(e.target.value.toUpperCase())}
+            placeholder="Enter stock symbol (e.g., AAPL)"
+          />
+          <button onClick={fetchStock}>Search</button>
 
-      {stockData && (
-        <div className="stock-card">
-          <h2>{stockData["01. symbol"]}</h2>
-          <p>Price: ${stockData["05. price"]}</p>
-          <p>Change %: {stockData["10. change percent"]}</p>
-        </div>
-      )}
+          {stockData && (
+            <div className="stock-card">
+              <h2>{stockData["01. symbol"]}</h2>
+              <p>Price: ${stockData["05. price"]}</p>
+              <p>Change %: {stockData["10. change percent"]}</p>
+            </div>
+          )}
 
-      {chartData && (
-        <div className="chart-container">
-          <Line data={chartData} />
+          {chartData && (
+            <div className="chart-container">
+              <Line data={chartData} />
+            </div>
+          )}
         </div>
-      )}
+      </main>
     </div>
   );
 }
