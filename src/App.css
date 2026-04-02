@@ -12,6 +12,13 @@
   border-radius: 8px;
 }
 
+.stock-details {
+  font-size: 0.9rem;
+  color: #555;
+  margin-top: -10px;
+  margin-bottom: 15px;
+}
+
 .chart-container {
   width: 80%;
   max-width: 600px;
