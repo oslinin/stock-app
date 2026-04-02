@@ -27,12 +27,13 @@ function App() {
   const [symbol, setSymbol] = useState("");
   const [stockData, setStockData] = useState(null);
   const [chartData, setChartData] = useState(null);
+  const [overviewData, setOverviewData] = useState(null);
   const API_KEY = "6Q4XW688FOUHZKGG";
 
   const fetchStock = async () => {
     if (!symbol) return;
     try {
-      const [quoteRes, chartRes] = await Promise.all([
+      const [quoteRes, chartRes, overviewRes] = await Promise.all([
         axios.get("https://www.alphavantage.co/query", {
           params: {
             function: "GLOBAL_QUOTE",
@@ -46,10 +47,18 @@ function App() {
             symbol,
             apikey: API_KEY
           }
+        }),
+        axios.get("https://www.alphavantage.co/query", {
+          params: {
+            function: "OVERVIEW",
+            symbol,
+            apikey: API_KEY
+          }
         })
       ]);
 
       setStockData(quoteRes.data["Global Quote"]);
+      setOverviewData(overviewRes.data);
 
       const dailyData = chartRes.data["Time Series (Daily)"];
       if (dailyData) {
@@ -85,6 +94,13 @@ function App() {
       {stockData && (
         <div className="stock-card">
           <h2>{stockData["01. symbol"]}</h2>
+          {overviewData && overviewData.Name && (
+            <>
+              <h3>{overviewData.Name}</h3>
+              <p>Exchange: {overviewData.Exchange}</p>
+              <p>Sector: {overviewData.Sector}</p>
+            </>
+          )}
           <p>Price: ${stockData["05. price"]}</p>
           <p>Change %: {stockData["10. change percent"]}</p>
         </div>
