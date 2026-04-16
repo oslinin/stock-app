@@ -55,3 +55,4 @@ pnpm install gh-pages --save-dev
 # 4. Deploy!
 
 pnpm run deploy
+Pipeline fixed!
