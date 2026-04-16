@@ -90,6 +90,9 @@ function App() {
 
   return (
     <div className="App">
+      <nav style={{ textAlign: "left" }}>
+        <a href="/stock-app">stock-app</a>
+      </nav>
       <h1>📈 My Stock App</h1>
       <div className="search-bar">
         <input
