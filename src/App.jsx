@@ -89,11 +89,12 @@ function App() {
   };
 
   return (
-    <div className="App">
-      <nav style={{ textAlign: "left" }}>
+    <div style={{ display: "flex", minHeight: "100vh" }}>
+      <nav style={{ width: "200px", padding: "1rem", borderRight: "1px solid #ccc" }}>
         <a href="/stock-app">stock-app</a>
       </nav>
-      <h1>📈 My Stock App</h1>
+      <div className="App" style={{ flex: 1 }}>
+        <h1>📈 My Stock App</h1>
       <div className="search-bar">
         <input
           value={symbol}
@@ -129,6 +130,7 @@ function App() {
           />
         </div>
       )}
+      </div>
     </div>
   );
 }
