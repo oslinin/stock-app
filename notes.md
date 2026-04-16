@@ -3,7 +3,7 @@ but using vite since create-react-app is a bit outdated and slow.
 - Also using pnpm instead of npm for faster installs.  
 - my github is https://github.com/oslinin/stock-app, and 
 - the live app is https://oslinin.github.io/stock-app/ using github pages.
-- I am using gemini CLI: gemini --yolo
+- I am using gemini CLI: gemini --yolo, or claude --dangerously-skip-permissions
 
 # Step 1 — Setting Up Your React Project
 
