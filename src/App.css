@@ -1,3 +1,47 @@
+.layout {
+  display: flex;
+  min-height: 100vh;
+  text-align: left;
+}
+
+.sidebar {
+  width: 200px;
+  padding: 1rem;
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.sidebar-title {
+  font-weight: 600;
+  color: var(--text-h);
+  margin-bottom: 0.75rem;
+}
+
+.sidebar a {
+  color: var(--text);
+  text-decoration: none;
+  padding: 0.35rem 0.6rem;
+  border-radius: 6px;
+}
+
+.sidebar a:hover {
+  background: var(--accent-bg);
+}
+
+.sidebar a.active {
+  color: var(--text-h);
+  background: var(--accent-bg);
+  border: 1px solid var(--accent-border);
+}
+
+.content {
+  flex: 1;
+  min-width: 0;
+  padding: 0 1.5rem 3rem;
+}
+
 .App {
   text-align: center;
   font-family: Arial, sans-serif;
@@ -51,6 +95,340 @@
 }
 
 .error {
-  color: #c0392b;
+  color: var(--red, #c0392b);
   margin-top: 0.5rem;
+}
+
+/* ---- screener ---- */
+
+.screener {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.screener h1 {
+  font-size: 32px;
+  letter-spacing: -0.5px;
+  margin: 24px 0 16px;
+}
+
+.screener-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.screener-header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.panel {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+  margin: 1rem 0;
+  background: var(--bg);
+}
+
+.panel h2,
+.panel h3 {
+  margin: 0 0 0.6rem;
+  font-size: 17px;
+}
+
+.panel-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.muted {
+  color: var(--text);
+  font-weight: 400;
+  font-size: 0.85em;
+}
+
+.warn {
+  color: var(--amber, #b45309);
+  background: var(--amber-bg, rgba(180, 83, 9, 0.12));
+  border-radius: 6px;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.9em;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.25rem 0.9rem;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  letter-spacing: 0.5px;
+}
+
+.badge-enter {
+  color: var(--green);
+  background: var(--green-bg);
+  border: 1px solid var(--green);
+}
+
+.badge-armed {
+  color: var(--amber);
+  background: var(--amber-bg);
+  border: 1px solid var(--amber);
+}
+
+.badge-wait,
+.badge-no_data {
+  color: var(--text);
+  background: var(--social-bg);
+  border: 1px solid var(--border);
+}
+
+button.ghost {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.3rem 0.8rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+button.ghost:hover {
+  background: var(--accent-bg);
+  color: var(--text-h);
+}
+
+.stats-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+
+.stat {
+  flex: 1 1 120px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.6rem 0.9rem;
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text);
+}
+
+.stat-value {
+  font-size: 1.25rem;
+  color: var(--text-h);
+  font-family: var(--mono);
+}
+
+.stat-green .stat-value {
+  color: var(--green);
+}
+
+.stat-red .stat-value {
+  color: var(--red);
+}
+
+.checks {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.check-mark {
+  display: inline-block;
+  width: 1.4rem;
+  font-weight: 700;
+}
+
+.check-pass .check-mark {
+  color: var(--green);
+}
+
+.check-fail .check-mark {
+  color: var(--red);
+}
+
+.legs-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+  margin: 0.5rem 0 1rem;
+}
+
+.legs-table th,
+.legs-table td {
+  text-align: left;
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.legs-table th {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.legs-table td {
+  font-family: var(--mono);
+  color: var(--text-h);
+}
+
+.action-buy {
+  color: var(--green);
+  font-weight: 700;
+}
+
+.action-sell {
+  color: var(--red);
+  font-weight: 700;
+}
+
+.spread-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.payoff-chart {
+  position: relative;
+  height: 320px;
+}
+
+.contracts-input {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.contracts-input input {
+  width: 70px;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-h);
+}
+
+.settings-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-width: 480px;
+}
+
+.settings-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+}
+
+.settings-grid input {
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-h);
+}
+
+.settings-grid button,
+.alert-form button {
+  align-self: flex-start;
+  padding: 0.45rem 1rem;
+  border: none;
+  border-radius: 6px;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+}
+
+.order-safety {
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+.order-buttons {
+  display: flex;
+  gap: 0.6rem;
+  margin: 0.6rem 0;
+}
+
+.order-buttons button {
+  padding: 0.45rem 1rem;
+  border: 1px solid var(--accent-border);
+  border-radius: 6px;
+  background: var(--accent-bg);
+  color: var(--text-h);
+  cursor: pointer;
+}
+
+.order-buttons button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.manual-spec {
+  background: var(--code-bg);
+  border-radius: 8px;
+  padding: 0.75rem;
+  font-size: 0.8rem;
+  overflow-x: auto;
+  text-align: left;
+  white-space: pre-wrap;
+}
+
+.alert-form {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  flex-wrap: wrap;
+}
+
+.alert-form input[type="text"],
+.alert-form input:not([type]) {
+  flex: 1 1 260px;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-h);
+}
+
+.alert-form label {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.9rem;
+}
+
+.event-row {
+  border-top: 1px solid var(--border);
+  padding: 0.6rem 0;
+  font-size: 0.9rem;
+}
+
+.event-row:first-of-type {
+  border-top: none;
+}
+
+.offline-panel p {
+  margin-bottom: 0.75rem;
 }

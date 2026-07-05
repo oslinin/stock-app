@@ -1,0 +1,10 @@
+# Automatic HTTPS for the screener API. GitHub Pages (https://oslinin.github.io)
+# can only call an https:// backend — this proxy is what makes that work.
+{$DOMAIN} {
+	handle /api/* {
+		reverse_proxy backend:8000
+	}
+	handle {
+		respond "vix-screener backend" 200
+	}
+}

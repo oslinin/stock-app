@@ -6,6 +6,26 @@ A personal stock dashboard that displays real-time quotes and 30-day price chart
 
 ---
 
+## VIX options screener
+
+The app now also ships a screener for AJ Brown's VIX hedge (call debit
+spread below the VIX future + put credit spread above it, equal $100 widths,
+net debit under $100) with MACD-arming / opening-range-confirmation entry
+verdicts, email alerts, a payoff chart, and no-auto-execute IBKR order
+tickets.
+
+- **Frontend**: the `#/screener` and `#/alerts` pages (React Router was added
+  for this; the original stock lookup lives on unchanged at `#/`).
+- **Backend**: `backend/` — FastAPI + ib_async talking to Interactive
+  Brokers. It runs on your own machine/VPS next to IB Gateway, **not** on
+  GitHub Pages; the static frontend calls it over HTTPS with a bearer token
+  you enter once in the Screener settings. See `backend/README.md`.
+- **VPS deployment**: `deploy/` — Docker Compose stack (backend + headless
+  IB Gateway + Caddy TLS). See `deploy/README.md`.
+- **Strategy rules**: `docs/strategies/vix-hedge.md`.
+
+---
+
 ## Deviations from the article
 
 The article uses `create-react-app` and `npm`. This repo uses:

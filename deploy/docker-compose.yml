@@ -1,0 +1,68 @@
+# VIX screener production deployment (run on your VPS next to nothing else):
+#   backend    - FastAPI + ib_async screener API
+#   ib-gateway - headless IB Gateway with IBC auto-login (gnzsnz/ib-gateway)
+#   caddy      - HTTPS reverse proxy (Let's Encrypt for $DOMAIN)
+#
+# Only Caddy publishes ports (80/443). The IB API port stays on the internal
+# Docker network and must never be exposed publicly.
+#
+# Bring-up: cp .env.example .env && edit && docker compose up -d
+
+services:
+  ib-gateway:
+    image: ghcr.io/gnzsnz/ib-gateway:stable
+    restart: unless-stopped
+    environment:
+      TWS_USERID: ${TWS_USERID}
+      TWS_PASSWORD: ${TWS_PASSWORD}
+      TRADING_MODE: ${TRADING_MODE:-paper}
+      READ_ONLY_API: ${READ_ONLY_API:-no}
+      TWOFA_TIMEOUT_ACTION: restart
+      AUTO_RESTART_TIME: 11:59 PM
+      TIME_ZONE: America/New_York
+    volumes:
+      - ib-settings:/home/ibgateway/Jts
+    networks: [internal]
+    # No published ports on purpose: the API socket (4003 live / 4004 paper via
+    # the image's socat bridge) is reachable only as ib-gateway:PORT inside the
+    # compose network.
+
+  backend:
+    build: ../backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      IBKR_HOST: ib-gateway
+      # gnzsnz/ib-gateway exposes paper on 4004 and live on 4003 (socat).
+      IBKR_PORT: ${IBKR_PORT:-4004}
+      DB_URL: sqlite:////data/vix_screener.db
+    volumes:
+      - backend-data:/data
+    depends_on:
+      - ib-gateway
+    networks: [internal]
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - backend
+    networks: [internal]
+
+volumes:
+  ib-settings:
+  backend-data:
+  caddy-data:
+  caddy-config:
+
+networks:
+  internal:
