@@ -11,6 +11,14 @@
   --shadow:
     rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
 
+  /* profit/loss polarity — validated for this surface (dataviz six checks) */
+  --green: #15803d;
+  --red: #b91c1c;
+  --green-bg: rgba(21, 128, 61, 0.12);
+  --red-bg: rgba(185, 28, 28, 0.12);
+  --amber: #b45309;
+  --amber-bg: rgba(180, 83, 9, 0.12);
+
   --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
   --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
   --mono: ui-monospace, Consolas, monospace;
@@ -43,6 +51,13 @@
     --social-bg: rgba(47, 48, 58, 0.5);
     --shadow:
       rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
+
+    --green: #16a34a;
+    --red: #ef4444;
+    --green-bg: rgba(22, 163, 74, 0.18);
+    --red-bg: rgba(239, 68, 68, 0.18);
+    --amber: #d97706;
+    --amber-bg: rgba(217, 119, 6, 0.18);
   }
 
   #social .button-icon {
