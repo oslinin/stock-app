@@ -59,7 +59,13 @@ function useThemeVersion() {
   return version;
 }
 
-function PayoffChart({ payoff, breakevens = [], spot = null, title }) {
+function PayoffChart({
+  payoff,
+  breakevens = [],
+  spot = null,
+  title,
+  xLabel = "VIX at expiration",
+}) {
   const themeVersion = useThemeVersion();
   if (!payoff || payoff.length === 0) return null;
 
@@ -106,7 +112,7 @@ function PayoffChart({ payoff, breakevens = [], spot = null, title }) {
       },
       tooltip: {
         callbacks: {
-          title: (items) => `VIX at expiration: ${items[0].parsed.x}`,
+          title: (items) => `${xLabel}: ${items[0].parsed.x}`,
           label: (item) =>
             `P&L: ${item.parsed.y >= 0 ? "+" : "−"}$${Math.abs(item.parsed.y).toLocaleString()}`,
         },
@@ -121,7 +127,7 @@ function PayoffChart({ payoff, breakevens = [], spot = null, title }) {
     scales: {
       x: {
         type: "linear",
-        title: { display: true, text: "VIX at expiration", color: text },
+        title: { display: true, text: xLabel, color: text },
         grid: { color: "transparent" },
         ticks: { color: text },
       },
