@@ -6,6 +6,7 @@ import Alerts from "./pages/Alerts.jsx";
 import Strategies from "./pages/Strategies.jsx";
 import StrategyDetail from "./pages/StrategyDetail.jsx";
 import SpecEditor from "./pages/SpecEditor.jsx";
+import OptionChain from "./pages/OptionChain.jsx";
 import "./App.css";
 
 function App() {
@@ -18,6 +19,7 @@ function App() {
         </NavLink>
         <NavLink to="/screener">VIX Screener</NavLink>
         <NavLink to="/strategies">Strategies</NavLink>
+        <NavLink to="/chain">Option Chain</NavLink>
         <NavLink to="/alerts">Alerts</NavLink>
       </nav>
       <main className="content">
@@ -28,6 +30,7 @@ function App() {
           <Route path="/strategies/new" element={<SpecEditor />} />
           <Route path="/strategies/:id" element={<StrategyDetail />} />
           <Route path="/strategies/:id/edit" element={<SpecEditor />} />
+          <Route path="/chain" element={<OptionChain />} />
           <Route path="/alerts" element={<Alerts />} />
         </Routes>
       </main>

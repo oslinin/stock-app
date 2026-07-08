@@ -31,6 +31,12 @@ class Settings(BaseSettings):
 
     scheduler_enabled: bool = True
 
+    # market data providers / analytics (phase 2)
+    alphavantage_api_key: str = ""
+    alphavantage_daily_budget: int = 25
+    iv_snapshot_symbols: str = "SPY,QQQ,IWM"
+    analytics_risk_free_rate: float = 0.04
+
     # VIX hedge strategy defaults
     vix_macd_fast: int = 12
     vix_macd_slow: int = 26
@@ -50,6 +56,10 @@ class Settings(BaseSettings):
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
+    @property
+    def iv_snapshot_symbol_list(self) -> list[str]:
+        return [s.strip().upper() for s in self.iv_snapshot_symbols.split(",") if s.strip()]
 
 
 @lru_cache

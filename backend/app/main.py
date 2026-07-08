@@ -9,13 +9,19 @@ from fastapi.responses import JSONResponse
 
 from .api import (
     routes_alerts,
+    routes_analytics,
     routes_health,
+    routes_marketdata,
     routes_orders,
     routes_screener,
     routes_specs,
     routes_strategies,
 )
 from .config import get_settings
+from .dataproviders.alphavantage import AlphaVantageProvider, CallBudget, DbCallStore
+from .dataproviders.ibkr_provider import IBKRProvider
+from .dataproviders.registry import ProviderRegistry
+from .dataproviders.yfinance_provider import YFinanceProvider
 from .db.session import init_db
 from .ibkr.client import IBClient
 from .ibkr.errors import DataUnavailable, IBKRUnavailable
@@ -39,15 +45,34 @@ async def lifespan(app: FastAPI):
     client = IBClient(settings)
     registry = build_registry(settings)
     engine = ScreenerEngine(client, registry, settings)
+    # provider registry: registration order = default routing priority
+    # (yfinance first: free, no gateway needed; ibkr via ?source=ibkr)
+    providers = ProviderRegistry()
+    providers.register(YFinanceProvider())
+    if settings.ibkr_enabled:
+        providers.register(IBKRProvider(client))
+    if settings.alphavantage_api_key:
+        providers.register(
+            AlphaVantageProvider(
+                settings.alphavantage_api_key,
+                budget=CallBudget(
+                    limit=settings.alphavantage_daily_budget,
+                    store=DbCallStore("alphavantage"),
+                ),
+            )
+        )
     app.state.ib = client
     app.state.registry = registry
     app.state.engine = engine
+    app.state.providers = providers
     client.start()
     scheduler = None
     if settings.scheduler_enabled:
-        scheduler = build_scheduler(engine, settings)
+        scheduler = build_scheduler(engine, settings, providers=providers)
         scheduler.start()
-        log.info("scheduler started (EOD arming scan + intraday confirmation poll)")
+        log.info(
+            "scheduler started (EOD arming scan + intraday confirmation poll + nightly iv_snapshot)"
+        )
     yield
     if scheduler is not None:
         scheduler.shutdown(wait=False)
@@ -81,6 +106,8 @@ def create_app() -> FastAPI:
     app.include_router(routes_orders.router, prefix=prefix)
     app.include_router(routes_alerts.router, prefix=prefix)
     app.include_router(routes_specs.router, prefix=prefix)
+    app.include_router(routes_marketdata.router, prefix=prefix)
+    app.include_router(routes_analytics.router, prefix=prefix)
     return app
 
 

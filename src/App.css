@@ -498,3 +498,50 @@ button.ghost:hover {
   color: var(--text-h);
   margin-bottom: 0.8rem;
 }
+
+/* ---- option chain / provenance (phase 2) ---- */
+
+.provenance {
+  font-size: 0.78rem;
+  padding: 0.15rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.provenance-live {
+  border-color: #2e9e5b;
+  color: #2e9e5b;
+}
+
+.provenance-delayed {
+  border-color: #c98a1b;
+  color: #c98a1b;
+}
+
+.provenance-eod {
+  border-color: #7a7a8c;
+}
+
+.filter-row input {
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel, transparent);
+  color: var(--text-h);
+}
+
+.chain-table td,
+.chain-table th {
+  text-align: right;
+}
+
+.chain-table .strike-cell {
+  text-align: center;
+  background: var(--social-bg);
+}
+
+.chain-table .atm-row td {
+  border-top: 2px solid var(--border);
+}

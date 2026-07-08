@@ -21,6 +21,7 @@ def init_db(settings: Settings) -> None:
             conn.exec_driver_sql("PRAGMA journal_mode=WAL")
     # import models so create_all sees the tables
     from ..alerts import models  # noqa: F401
+    from ..dataproviders import models as provider_models  # noqa: F401
     from ..specs import models as spec_models  # noqa: F401
 
     SQLModel.metadata.create_all(_engine)

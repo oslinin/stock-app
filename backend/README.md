@@ -29,7 +29,9 @@ Then point the frontend at it: `echo "VITE_API_BASE=http://localhost:8000/api/v1
 
 ```bash
 pytest        # pure-math tests: MACD, signals, payoff, strike selection, order build,
-              # strategy spec schema, doc compiler, spec persistence
+              # strategy spec schema, doc compiler, spec persistence,
+              # provider routing/provenance/budget guard, BS greeks/IV,
+              # IV rank, optionlab glue, indicators, iv_snapshot job
 ```
 
 ## Strategy library (Phase 1 of the trading-platform plan)
@@ -65,6 +67,49 @@ resolves them by saving a new version (PUT `/specs/{id}`).
 | `POST /orders/preview` | IBKR whatIf (margin/commission) — places nothing |
 | `POST /orders/ticket` | staged `transmit=false` combo (gated by `ALLOW_ORDER_STAGING`) or manual spec |
 | `GET/POST/PATCH/DELETE /alerts`, `GET /alerts/events` | alert rules + fired events |
+| `GET /marketdata/providers` | registered sources + capabilities + latency |
+| `GET /marketdata/quote?symbol&source` | provenance-labeled quote |
+| `GET /marketdata/bars?symbol&period&interval&source` | OHLCV bars |
+| `GET /marketdata/expiries?symbol&source` | option expiries |
+| `GET /marketdata/chain?symbol&expiry&source&greeks` | chain rows + mid-IV + BS greeks |
+| `GET /marketdata/indicators?symbol&set=macd,rsi,bbands,sma20,atr` | indicator series over bars |
+| `GET /marketdata/ivrank?symbol` | IV rank/percentile over iv_history |
+| `POST /analytics/structure` | optionlab PoP / expected profit / P&L for arbitrary legs |
+
+## Market data layer (Phase 2 of the trading-platform plan)
+
+Every `/marketdata` response is a provenance envelope —
+`{data, provenance: {source, asof, latency}}` — so the UI can never show
+an unlabeled number. Providers (registration order = default routing):
+
+- **yfinance** (default; free, delayed, no gateway needed): quotes, bars,
+  chains (Yahoo's own per-contract IV, re-enriched with vollib greeks).
+- **ibkr** (`?source=ibkr`; needs the gateway): quotes, bars, chains with
+  IBKR model greeks, and the **IV index history** used for IV rank.
+- **alphavantage** (registers only when `ALPHAVANTAGE_API_KEY` is set;
+  free key at alphavantage.co, 25 req/day): `HISTORICAL_OPTIONS` EOD
+  chains. A persistent budget guard refuses call 26 (HTTP 429) instead of
+  silently burning the quota.
+
+New `.env` keys (see `.env.example`): `ALPHAVANTAGE_API_KEY`,
+`ALPHAVANTAGE_DAILY_BUDGET`, `IV_SNAPSHOT_SYMBOLS`,
+`ANALYTICS_RISK_FREE_RATE`.
+
+Smoke test (backend running; IB Gateway optional):
+
+```bash
+curl -s localhost:8000/api/v1/marketdata/providers | python3 -m json.tool
+curl -s "localhost:8000/api/v1/marketdata/quote?symbol=SPY" | python3 -m json.tool
+curl -s "localhost:8000/api/v1/marketdata/chain?symbol=SPY" | python3 -m json.tool | head -40
+curl -s "localhost:8000/api/v1/marketdata/chain?symbol=SPY&source=ibkr" \
+  | python3 -m json.tool | head -20     # provenance.source flips to ibkr
+curl -s -X POST localhost:8000/api/v1/analytics/structure \
+  -H 'content-type: application/json' \
+  -d '{"legs":[{"right":"P","action":"sell","strike":95,"premium":2.0},
+               {"right":"P","action":"buy","strike":90,"premium":1.1}],
+       "spot":100,"volatility":0.25,"daysToTarget":45}'
+curl -s "localhost:8000/api/v1/marketdata/ivrank?symbol=SPY"   # 404 until iv_history has rows
+```
 
 ## Scheduler
 
@@ -72,6 +117,12 @@ resolves them by saving a new version (PUT `/specs/{id}`).
   persists the armed state (with the confirming close), fires ARMED alerts.
 - `intraday_confirmation_poll` — every 5 min, 09:35–16:00 ET, only while
   armed: fires ENTER alerts (with the constructed spread) once per day.
+- `iv_snapshot` — 16:45 ET weekdays: syncs daily ATM-IV history per
+  `IV_SNAPSHOT_SYMBOLS` into `iv_history`. With IBKR connected it
+  backfills ~1 year from IBKR's IV index (whatToShow
+  `OPTION_IMPLIED_VOLATILITY`) on the first run, so `/marketdata/ivrank`
+  works immediately; without IBKR it falls back to one chain-derived ATM
+  snapshot per night. Idempotent per symbol/day.
 
 ## Safety
 

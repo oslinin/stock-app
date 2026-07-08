@@ -13,7 +13,8 @@ A personal stock dashboard that displays real-time quotes and 30-day price chart
 | Stock lookup (quotes + 30-day chart) | ✅ live | `#/` on the demo, or `pnpm dev` |
 | VIX hedge screener + alerts + order tickets | ✅ needs backend | `#/screener`, `#/alerts` — run `backend/` next to IB Gateway |
 | **Strategy library (spec DB + doc/payoff pages)** | ✅ Phase 1 | `#/strategies` — run the backend (no IB needed for this page), a seeded 45-DTE put credit spread appears; view its doc + payoff, edit it, approve it |
-| Provider-labeled market data, backtesting, bots, journal, portfolio… | 🔜 phases 2–18 | see `superpowers/plan/trading-platform.md` |
+| **Provider-labeled market data + option analytics** | ✅ Phase 2 | `#/chain` — option chain with a source switcher (yfinance free / IBKR) and per-contract IV + greeks, provenance badge on every response; `POST /analytics/structure` gives PoP/expected profit for arbitrary legs; nightly job keeps ATM-IV history for `/marketdata/ivrank` (backfills ~1y from IBKR's IV index when connected) |
+| Backtesting, bots, journal, portfolio… | 🔜 phases 3–18 | see `superpowers/plan/trading-platform.md` |
 
 ### Try the strategy library (Phase 1)
 
@@ -37,6 +38,24 @@ curl -s localhost:8000/api/v1/specs | python3 -m json.tool          # seeded str
 curl -s "localhost:8000/api/v1/specs/1/payoff?reference_price=600"  # legs + breakevens
 curl -s -X POST localhost:8000/api/v1/specs/1/approve               # 422: stop loss unstated
 ```
+
+### Try the market-data layer (Phase 2)
+
+With the backend running (IB Gateway optional — yfinance is the default source):
+
+```bash
+curl -s localhost:8000/api/v1/marketdata/providers | python3 -m json.tool   # registered sources
+curl -s "localhost:8000/api/v1/marketdata/quote?symbol=SPY"                 # {data, provenance}
+curl -s "localhost:8000/api/v1/marketdata/chain?symbol=SPY"                 # chain + IV + greeks
+curl -s -X POST localhost:8000/api/v1/analytics/structure \
+  -H 'content-type: application/json' \
+  -d '{"legs":[{"right":"P","action":"sell","strike":95,"premium":2.0},
+               {"right":"P","action":"buy","strike":90,"premium":1.1}],
+       "spot":100,"volatility":0.25,"daysToTarget":45}'                     # PoP, max P/L
+```
+
+Or in the UI: **Option Chain** in the sidebar — pick a symbol, switch the
+source between yfinance and IBKR, and note the provenance badge change.
 
 ---
 
