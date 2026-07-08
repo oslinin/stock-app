@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { NavLink, Route, Routes } from "react-router-dom";
 import StockLookup from "./pages/StockLookup.jsx";
 import Screener from "./pages/Screener.jsx";
@@ -10,9 +10,43 @@ import OptionChain from "./pages/OptionChain.jsx";
 import "./App.css";
 
 function App() {
+  const [navOpen, setNavOpen] = useState(false);
+
+  // close the drawer on Escape
+  useEffect(() => {
+    if (!navOpen) return undefined;
+    const onKeyDown = (e) => e.key === "Escape" && setNavOpen(false);
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [navOpen]);
+
   return (
     <div className="layout">
-      <nav className="sidebar">
+      <div className="topbar">
+        <button
+          type="button"
+          className={`nav-toggle${navOpen ? " nav-toggle-open" : ""}`}
+          aria-label={navOpen ? "Close navigation" : "Open navigation"}
+          aria-expanded={navOpen}
+          onClick={() => setNavOpen((v) => !v)}
+        >
+          <span />
+          <span />
+          <span />
+        </button>
+        <span className="topbar-title">stock-app</span>
+      </div>
+      {navOpen && (
+        <div
+          className="nav-scrim"
+          onClick={() => setNavOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+      <nav
+        className={`sidebar${navOpen ? " sidebar-open" : ""}`}
+        onClick={() => setNavOpen(false)}
+      >
         <div className="sidebar-title">stock-app</div>
         <NavLink to="/" end>
           Stock Lookup
