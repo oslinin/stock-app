@@ -27,8 +27,8 @@ ssh <user>@<vps>              # you're on the VPS from here on
 cd stock-app/deploy           # or git clone the repo first
 cp .env.example .env
 # edit .env: DOMAIN, TWS_USERID/TWS_PASSWORD, API_TOKEN, SMTP_*
-docker-compose up -d --build
-docker-compose logs -f backend   # wait for "connected to IBKR"
+sudo docker-compose up -d --build
+sudo docker-compose logs -f backend   # wait for "connected to IBKR"
 ```
 
 These commands use `docker-compose` (hyphenated, the standalone binary),
@@ -37,6 +37,17 @@ install typically only has the former (`docker compose` fails with
 `unknown shorthand flag: 'd' in -d`). Check with `which docker-compose`;
 if this VPS instead only has the plugin (`docker compose version` works),
 swap every `docker-compose` below for `docker compose`.
+
+`sudo` is needed unless your user is in the `docker` group — talking to
+the Docker daemon otherwise fails with `permission denied ... docker.sock`.
+Every `docker-compose`/`docker` command on this page assumes `sudo`; drop
+it once you've added yourself to the group (one-time, avoids typing sudo
+for every command from then on):
+
+```bash
+sudo usermod -aG docker $USER
+newgrp docker   # or just log out and back in
+```
 
 Verify from anywhere:
 
@@ -65,24 +76,59 @@ kept in the browser's localStorage, never in the built site.
   staged orders, so either keep the manual flow or run TWS instead.
 - **Persistence**: SQLite (alert rules/events, armed state) lives on the
   `backend-data` volume; IB Gateway settings on `ib-settings`.
-- **Updates**: `git pull && docker-compose up -d --build`.
+- **Updates**: `git pull && sudo docker-compose up -d --build`.
 
-## Tear down / start over
+## Tear down the stack / start over
 
-To fully remove the stack from a machine — e.g. you brought it up on the
-wrong box (a laptop/desktop instead of the VPS, an easy mistake since
-compose comes up cleanly anywhere regardless of whether it's reachable):
+To remove just this app's containers/images/volumes from a machine —
+e.g. you brought it up on the wrong box (a laptop/desktop instead of the
+VPS, an easy mistake since compose comes up cleanly anywhere regardless
+of whether it's reachable) — without touching Docker itself:
 
 ```bash
 cd deploy
-docker-compose down -v --rmi local   # stop + remove containers, the named
-                                      # volumes (ib-settings, backend-data,
-                                      # caddy-data, caddy-config), and the
-                                      # locally built backend image
-rm -f .env                           # delete the local copy of IBKR/API
-                                      # secrets — .env is gitignored but
-                                      # still sits on disk in plaintext
+sudo docker-compose down -v --rmi local   # stop + remove containers, the
+                                           # named volumes (ib-settings,
+                                           # backend-data, caddy-data,
+                                           # caddy-config), and the locally
+                                           # built backend image
+rm -f .env                                # delete the local copy of
+                                           # IBKR/API secrets — .env is
+                                           # gitignored but still sits on
+                                           # disk in plaintext
 ```
 
 Then redo the [Bring-up](#bring-up) steps on the right machine: the VPS
 itself, over SSH.
+
+## Uninstall Docker entirely
+
+Only if you want the machine back to a clean slate — e.g. switching from
+the distro's `docker.io` package to Docker's official repo, or
+decommissioning the box. Run the stack teardown above *first* (this
+removes the underlying data those containers/volumes were stored in).
+
+**If Docker came from apt (`docker.io` + a separate `docker-compose`):**
+
+```bash
+sudo systemctl stop docker
+sudo apt purge -y docker.io docker-compose docker-compose-plugin
+sudo apt autoremove -y
+sudo rm -rf /var/lib/docker /var/lib/containerd /etc/docker
+sudo groupdel docker   # only if no other service needs it
+```
+
+**If Docker came from the official repo (`get.docker.com`, `docker-ce`):**
+
+```bash
+sudo systemctl stop docker
+sudo apt purge -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+sudo apt autoremove -y
+sudo rm -rf /var/lib/docker /var/lib/containerd /etc/docker
+sudo rm /etc/apt/sources.list.d/docker.list /etc/apt/keyrings/docker.asc 2>/dev/null
+sudo groupdel docker   # only if no other service needs it
+```
+
+`/var/lib/docker` holds every image/container/volume on the machine, not
+just this stack's — deleting it is irreversible for anything else you may
+have running under Docker on this box.
