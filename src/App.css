@@ -690,3 +690,26 @@ button.ghost:hover {
   color: var(--accent);
   margin-top: 0.1rem;
 }
+
+/* ---- stock lookup provenance/attribution ---- */
+
+.stock-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.stock-card-header h2 {
+  margin: 0;
+}
+
+.av-credit {
+  margin-top: 1.5rem;
+}
+
+.av-credit a {
+  color: inherit;
+  text-decoration: underline;
+}
