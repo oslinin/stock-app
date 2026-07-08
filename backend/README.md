@@ -28,8 +28,29 @@ Then point the frontend at it: `echo "VITE_API_BASE=http://localhost:8000/api/v1
 ## Tests
 
 ```bash
-pytest        # pure-math tests: MACD, signals, payoff, strike selection, order build
+pytest        # pure-math tests: MACD, signals, payoff, strike selection, order build,
+              # strategy spec schema, doc compiler, spec persistence
 ```
+
+## Strategy library (Phase 1 of the trading-platform plan)
+
+The `/specs` API is the strategy database: every strategy is an
+`OptionsStrategySpec` (see `app/specs/schema.py`) stored as versioned JSON.
+IB Gateway is NOT required for any of it. A 45-DTE 0.30Δ put credit spread
+is seeded automatically on first startup.
+
+```bash
+# after "Run locally" above (Gateway optional):
+curl -s localhost:8000/api/v1/specs                        # list (filters: ?status=&origin=&category=)
+curl -s localhost:8000/api/v1/specs/1                      # record + current spec JSON
+curl -s localhost:8000/api/v1/specs/1/doc                  # markdown doc + payoff + section status
+curl -s "localhost:8000/api/v1/specs/1/payoff?reference_price=600"
+curl -s -X POST localhost:8000/api/v1/specs/1/approve      # 422 while exits are unspecified
+```
+
+Rules the source never stated are the explicit sentinel `"unspecified"` —
+they render as "⚠ not stated in source" and block approval until a human
+resolves them by saving a new version (PUT `/specs/{id}`).
 
 ## API (prefix `/api/v1`, Bearer token except `/health`)
 

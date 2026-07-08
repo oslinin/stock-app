@@ -1,8 +1,42 @@
 # Stock App
 
-A personal stock dashboard that displays real-time quotes and 30-day price charts for any stock symbol. Built following the article [Build & Publish Your First Stock App (for FREE!)](https://medium.com/@wl8380/build-publish-your-first-stock-app-for-free-df59820998aa) with a few modern tooling upgrades.
+A personal stock dashboard that displays real-time quotes and 30-day price charts for any stock symbol. Built following the article [Build & Publish Your First Stock App (for FREE!)](https://medium.com/@wl8380/build-publish-your-first-stock-app-for-free-df59820998aa) with a few modern tooling upgrades — now growing into a personal options/crypto trading platform (plan: `superpowers/plan/trading-platform.md`).
 
 **Live demo:** https://oslinin.github.io/stock-app/
+
+---
+
+## What works today
+
+| Feature | Status | How to try it |
+|---|---|---|
+| Stock lookup (quotes + 30-day chart) | ✅ live | `#/` on the demo, or `pnpm dev` |
+| VIX hedge screener + alerts + order tickets | ✅ needs backend | `#/screener`, `#/alerts` — run `backend/` next to IB Gateway |
+| **Strategy library (spec DB + doc/payoff pages)** | ✅ Phase 1 | `#/strategies` — run the backend (no IB needed for this page), a seeded 45-DTE put credit spread appears; view its doc + payoff, edit it, approve it |
+| Provider-labeled market data, backtesting, bots, journal, portfolio… | 🔜 phases 2–18 | see `superpowers/plan/trading-platform.md` |
+
+### Try the strategy library (Phase 1)
+
+```bash
+# backend (SQLite; IB Gateway NOT required for /specs)
+cd backend
+python -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev]"
+uvicorn app.main:app --reload --port 8000 --loop asyncio
+
+# frontend, in another terminal at the repo root
+pnpm install
+echo "VITE_API_BASE=http://localhost:8000/api/v1" >> .env
+pnpm dev            # open the printed URL → Strategies in the sidebar
+```
+
+Smoke test without the UI:
+
+```bash
+curl -s localhost:8000/api/v1/specs | python3 -m json.tool          # seeded strategy
+curl -s "localhost:8000/api/v1/specs/1/payoff?reference_price=600"  # legs + breakevens
+curl -s -X POST localhost:8000/api/v1/specs/1/approve               # 422: stop loss unstated
+```
 
 ---
 

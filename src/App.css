@@ -432,3 +432,69 @@ button.ghost:hover {
 .offline-panel p {
   margin-bottom: 0.75rem;
 }
+
+/* Strategy library (specs) */
+.section-badges .badge {
+  font-size: 0.7rem;
+  padding: 0.1rem 0.5rem;
+  margin-right: 0.3rem;
+  font-weight: 600;
+  text-transform: none;
+}
+
+.badge-defined,
+.badge-approved {
+  color: var(--green);
+  background: var(--green-bg);
+  border: 1px solid var(--green);
+}
+
+.badge-partial,
+.badge-needs_review {
+  color: var(--amber);
+  background: var(--amber-bg);
+  border: 1px solid var(--amber);
+}
+
+.badge-undefined,
+.badge-draft,
+.badge-archived {
+  color: var(--text);
+  background: var(--social-bg);
+  border: 1px solid var(--border);
+}
+
+.filter-row {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.8rem;
+}
+
+.filter-row label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+.filter-row select {
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel, transparent);
+  color: var(--text-h);
+}
+
+.json-editor {
+  width: 100%;
+  font-family: var(--mono, monospace);
+  font-size: 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.6rem;
+  background: var(--social-bg);
+  color: var(--text-h);
+  margin-bottom: 0.8rem;
+}

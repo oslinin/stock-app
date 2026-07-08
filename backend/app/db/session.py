@@ -15,8 +15,13 @@ def init_db(settings: Settings) -> None:
         {"check_same_thread": False} if settings.db_url.startswith("sqlite") else {}
     )
     _engine = create_engine(settings.db_url, connect_args=connect_args)
+    if settings.db_url.startswith("sqlite"):
+        # single-writer SQLite: WAL lets readers proceed during writes
+        with _engine.connect() as conn:
+            conn.exec_driver_sql("PRAGMA journal_mode=WAL")
     # import models so create_all sees the tables
     from ..alerts import models  # noqa: F401
+    from ..specs import models as spec_models  # noqa: F401
 
     SQLModel.metadata.create_all(_engine)
 

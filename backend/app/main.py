@@ -12,6 +12,7 @@ from .api import (
     routes_health,
     routes_orders,
     routes_screener,
+    routes_specs,
     routes_strategies,
 )
 from .config import get_settings
@@ -32,6 +33,9 @@ log = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     settings = app.state.settings
     init_db(settings)
+    from .specs.seed import seed_default_specs
+
+    seed_default_specs()
     client = IBClient(settings)
     registry = build_registry(settings)
     engine = ScreenerEngine(client, registry, settings)
@@ -76,6 +80,7 @@ def create_app() -> FastAPI:
     app.include_router(routes_screener.router, prefix=prefix)
     app.include_router(routes_orders.router, prefix=prefix)
     app.include_router(routes_alerts.router, prefix=prefix)
+    app.include_router(routes_specs.router, prefix=prefix)
     return app
 
 
