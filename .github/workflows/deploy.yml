@@ -32,3 +32,7 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./dist
+          # keep_files: without this, every main deploy wipes the whole
+          # gh-pages branch first — including the preview/ subpaths that
+          # deploy-preview.yml publishes for open PR branches.
+          keep_files: true

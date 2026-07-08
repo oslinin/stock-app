@@ -109,9 +109,14 @@ pnpm run lint && pnpm run build
 
 ## Deployment
 
-- **Frontend**: pushes to `main` auto-deploy to GitHub Pages via
-  `.github/workflows/deploy.yml` (set the `VITE_API_KEY` repo secret for the
-  stock-lookup page).
+- **Frontend (production)**: pushes to `main` auto-deploy to
+  `https://oslinin.github.io/stock-app/` via `.github/workflows/deploy.yml`
+  (set the `VITE_API_KEY` repo secret for the stock-lookup page).
+- **Frontend (PR previews)**: pushes to any other branch auto-deploy to
+  `https://oslinin.github.io/stock-app/preview/<branch>/` via
+  `.github/workflows/deploy-preview.yml` — production is never touched;
+  the preview is removed automatically when its PR closes or merges. Also
+  runnable on demand from the Actions tab (`workflow_dispatch`).
 - **Backend + IB Gateway on a VPS**: Docker Compose stack (backend +
   headless gateway + Caddy TLS) in [`deploy/`](deploy/README.md).
 
