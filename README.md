@@ -13,7 +13,7 @@ A personal stock dashboard that displays real-time quotes and 30-day price chart
 | Stock lookup (quotes + 30-day chart) | ✅ live | `#/` on the demo, or `pnpm dev` |
 | VIX hedge screener + alerts + order tickets | ✅ needs backend | `#/screener`, `#/alerts` — run `backend/` next to IB Gateway |
 | **Strategy library (spec DB + doc/payoff pages)** | ✅ Phase 1 | `#/strategies` — run the backend (no IB needed for this page), a seeded 45-DTE put credit spread appears; view its doc + payoff, edit it, approve it |
-| **Provider-labeled market data + option analytics** | ✅ Phase 2 | `#/chain` — option chain with a source switcher (yfinance free / IBKR) and per-contract IV + greeks, provenance badge on every response; `POST /analytics/structure` gives PoP/expected profit for arbitrary legs; nightly job keeps ATM-IV history for `/marketdata/ivrank` (backfills ~1y from IBKR's IV index when connected) |
+| **Provider-labeled market data + option analytics** | ✅ Phase 2 | `#/chain` — option chain with a source switcher (yfinance free / IBKR) and per-contract IV + greeks, provenance badge on every response; `POST /analytics/structure` gives PoP/expected profit for arbitrary legs; nightly job syncs ATM-IV history from IBKR's IV index for `/marketdata/ivrank` (~1y backfill on first run) |
 | Backtesting, bots, journal, portfolio… | 🔜 phases 3–18 | see `superpowers/plan/trading-platform.md` |
 
 ### Try the strategy library (Phase 1)

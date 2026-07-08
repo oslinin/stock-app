@@ -147,8 +147,8 @@ def ivrank(request: Request, symbol: str, lookback_days: int = 252) -> dict:
         raise HTTPException(
             404,
             f"no IV history for '{symbol}' yet — the nightly iv_snapshot job "
-            "populates it (with IBKR connected it backfills ~1y of the IV "
-            "index on first run)",
+            "syncs it from IBKR's IV index (backfills ~1y on first run; "
+            "requires the gateway)",
         )
     rows = list(reversed(rows))
     history = [r.atm_iv for r in rows]

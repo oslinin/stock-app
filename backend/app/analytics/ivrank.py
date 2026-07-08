@@ -1,5 +1,5 @@
-"""IV rank / IV percentile over an ATM-IV history, plus ATM-IV extraction
-from a chain snapshot (used by the nightly iv_snapshot job)."""
+"""IV rank / IV percentile over an ATM-IV history (the iv_history table,
+synced nightly from IBKR's IV index)."""
 
 from __future__ import annotations
 
@@ -21,14 +21,3 @@ def iv_percentile(history: list[float], current: float) -> float | None:
         return None
     below = sum(1 for v in history if v < current)
     return below / len(history) * 100.0
-
-
-def atm_iv_from_chain(rows: list[dict], spot: float) -> float | None:
-    """Average call/put IV at the strike nearest spot. Rows: {strike,
-    right, iv}; rows without IV are ignored."""
-    usable = [r for r in rows if r.get("iv") is not None and r.get("strike") is not None]
-    if not usable:
-        return None
-    atm_strike = min((r["strike"] for r in usable), key=lambda k: abs(k - spot))
-    ivs = [r["iv"] for r in usable if r["strike"] == atm_strike]
-    return sum(ivs) / len(ivs) if ivs else None

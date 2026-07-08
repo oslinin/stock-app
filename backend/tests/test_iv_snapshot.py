@@ -1,6 +1,6 @@
-"""iv_snapshot job: provider-sync first (IBKR IV index backfill), chain
-snapshot only as fallback; idempotent either way. Fake providers, real
-(in-memory) SQLite."""
+"""iv_snapshot job: syncs the daily IV series from an iv_history-capable
+provider (IBKR IV index backfill), idempotently; skips cleanly when no
+such provider is registered. Fake providers, real (in-memory) SQLite."""
 
 import asyncio
 from datetime import date, timedelta
@@ -45,21 +45,11 @@ class IVIndexProvider:
 
 
 class ChainOnlyProvider:
+    """Registered but lacking the iv_history capability (like yfinance)."""
+
     name = "yfinance"
     capabilities = frozenset({"quote", "chain", "expiries"})
     latency = "delayed"
-
-    async def quote(self, symbol):
-        return {"symbol": symbol, "price": 100.0}
-
-    async def expiries(self, symbol):
-        return [(date.today() + timedelta(days=30)).isoformat()]
-
-    async def chain(self, symbol, expiry):
-        return [
-            {"strike": 100.0, "right": "C", "iv": 0.22},
-            {"strike": 100.0, "right": "P", "iv": 0.24},
-        ]
 
 
 def stored():
@@ -91,16 +81,8 @@ def test_sync_backfills_full_series_from_iv_history_provider():
     assert len(stored()) == 5
 
 
-def test_falls_back_to_chain_snapshot_without_iv_history_provider():
+def test_skips_cleanly_without_iv_history_provider():
     registry = ProviderRegistry()
     registry.register(ChainOnlyProvider())
-    asyncio.run(iv_snapshot(registry, settings()))
-    rows = stored()
-    assert len(rows) == 1
-    assert rows[0]["atm_iv"] == pytest.approx(0.23)  # mean of call/put ATM IV
-    assert rows[0]["source"] == "yfinance"
-    assert rows[0]["underlying_px"] == pytest.approx(100.0)
-
-    # idempotent per day
-    asyncio.run(iv_snapshot(registry, settings()))
-    assert len(stored()) == 1
+    asyncio.run(iv_snapshot(registry, settings()))  # must not raise
+    assert stored() == []

@@ -85,7 +85,8 @@ an unlabeled number. Providers (registration order = default routing):
 - **yfinance** (default; free, delayed, no gateway needed): quotes, bars,
   chains (Yahoo's own per-contract IV, re-enriched with vollib greeks).
 - **ibkr** (`?source=ibkr`; needs the gateway): quotes, bars, chains with
-  IBKR model greeks, and the **IV index history** used for IV rank.
+  IBKR model greeks, and the **IV index history** that feeds IV rank
+  (the only IV-history source — free daily ATM-IV series, ~1y deep).
 - **alphavantage** (registers only when `ALPHAVANTAGE_API_KEY` is set;
   free key at alphavantage.co, 25 req/day): `HISTORICAL_OPTIONS` EOD
   chains. A persistent budget guard refuses call 26 (HTTP 429) instead of
@@ -118,11 +119,12 @@ curl -s "localhost:8000/api/v1/marketdata/ivrank?symbol=SPY"   # 404 until iv_hi
 - `intraday_confirmation_poll` — every 5 min, 09:35–16:00 ET, only while
   armed: fires ENTER alerts (with the constructed spread) once per day.
 - `iv_snapshot` — 16:45 ET weekdays: syncs daily ATM-IV history per
-  `IV_SNAPSHOT_SYMBOLS` into `iv_history`. With IBKR connected it
-  backfills ~1 year from IBKR's IV index (whatToShow
-  `OPTION_IMPLIED_VOLATILITY`) on the first run, so `/marketdata/ivrank`
-  works immediately; without IBKR it falls back to one chain-derived ATM
-  snapshot per night. Idempotent per symbol/day.
+  `IV_SNAPSHOT_SYMBOLS` into `iv_history` from IBKR's IV index
+  (whatToShow `OPTION_IMPLIED_VOLATILITY`). The first run backfills
+  ~1 year, so `/marketdata/ivrank` works immediately; later runs top up
+  missing days (a night with the gateway down is backfilled by the next
+  successful sync). Idempotent per symbol/day; skips with a log line
+  when no IV-history-capable provider is registered.
 
 ## Safety
 
