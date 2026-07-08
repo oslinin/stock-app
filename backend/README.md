@@ -8,19 +8,24 @@ Strategy rules: `../docs/strategies/vix-hedge.md`.
 
 ## Run locally
 
-Requires Python 3.11+ and an IB Gateway or TWS session (paper: Gateway port
-4002 / TWS 7497) with API connections enabled.
+Requires [uv](https://docs.astral.sh/uv/getting-started/installation/) and
+Python 3.11+ (uv installs the interpreter for you if it's missing), plus an
+IB Gateway or TWS session (paper: Gateway port 4002 / TWS 7497) with API
+connections enabled.
 
 ```bash
 cd backend
-python -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"
+uv sync --extra dev           # creates .venv, installs from uv.lock (~10s)
 cp .env.example .env          # edit IBKR_PORT etc.
-uvicorn app.main:app --reload --port 8000 --loop asyncio
+uv run uvicorn app.main:app --reload --port 8000 --loop asyncio
 ```
 
 `--loop asyncio` matters: ib_async, APScheduler and FastAPI share one plain
-asyncio event loop.
+asyncio event loop. `uv run` picks up `.venv` automatically — no
+`source .venv/bin/activate` needed (though it still works if you prefer it).
+
+Added a dependency to `pyproject.toml`? Run `uv lock` to update `uv.lock`,
+then `uv sync --extra dev` — commit both files together.
 
 Then point the frontend at it: `echo "VITE_API_BASE=http://localhost:8000/api/v1" >> ../.env && pnpm dev`
 (or enter the URL in the Screener page's Settings panel).
@@ -28,10 +33,10 @@ Then point the frontend at it: `echo "VITE_API_BASE=http://localhost:8000/api/v1
 ## Tests
 
 ```bash
-pytest        # pure-math tests: MACD, signals, payoff, strike selection, order build,
-              # strategy spec schema, doc compiler, spec persistence,
-              # provider routing/provenance/budget guard, BS greeks/IV,
-              # IV rank, optionlab glue, indicators, iv_snapshot job
+uv run pytest   # pure-math tests: MACD, signals, payoff, strike selection, order build,
+                # strategy spec schema, doc compiler, spec persistence,
+                # provider routing/provenance/budget guard, BS greeks/IV,
+                # IV rank, optionlab glue, indicators, iv_snapshot job
 ```
 
 ## Strategy library (Phase 1 of the trading-platform plan)

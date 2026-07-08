@@ -27,7 +27,9 @@ runs on Pages; you point the static frontend at your own backend URL.
 
 ### Prerequisites
 
-- **Python 3.11+** and **Node 20+ with pnpm** (`corepack enable`)
+- **[uv](https://docs.astral.sh/uv/getting-started/installation/)** for the
+  backend (Python 3.11+ — uv installs the interpreter for you if needed)
+  and **Node 20+ with pnpm** (`corepack enable`) for the frontend
 - **IB Gateway or TWS** (optional) — only needed for the VIX screener,
   order tickets, `?source=ibkr` market data, and IV-rank history. The
   strategy library, yfinance market data, and option analytics work
@@ -38,14 +40,14 @@ runs on Pages; you point the static frontend at your own backend URL.
 
 ```bash
 cd backend
-python -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"
+uv sync --extra dev         # creates .venv, installs from uv.lock (~10s)
 cp .env.example .env        # then edit — see below
-uvicorn app.main:app --reload --port 8000 --loop asyncio
+uv run uvicorn app.main:app --reload --port 8000 --loop asyncio
 ```
 
 `--loop asyncio` matters: ib_async, APScheduler and FastAPI must share one
-plain asyncio event loop.
+plain asyncio event loop. `uv run` uses `.venv` automatically, no manual
+activation needed.
 
 The `.env` defaults are fine for a first run without IB. Keys you may want
 to set (all documented in `backend/.env.example`):
@@ -99,7 +101,7 @@ More per-feature smoke tests: [`backend/README.md`](backend/README.md).
 ### 4. Tests
 
 ```bash
-cd backend && pytest        # pure-logic suite, no network/IB required
+cd backend && uv run pytest   # pure-logic suite, no network/IB required
 pnpm run lint && pnpm run build
 ```
 
