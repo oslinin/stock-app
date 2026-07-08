@@ -532,16 +532,161 @@ button.ghost:hover {
   color: var(--text-h);
 }
 
-.chain-table td,
-.chain-table th {
+/* the chain needs real width — 11 dense numeric columns don't fit the
+   900px narrow-page layout used by the form-style pages */
+.chain-page {
+  max-width: 1100px;
+}
+
+.chain-spot {
+  font-size: 0.9rem;
+  color: var(--text);
+  padding: 0.3rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--social-bg);
+}
+
+.chain-spot strong {
+  color: var(--text-h);
+  font-family: var(--mono);
+}
+
+.chain-hint {
+  margin-bottom: 0.5rem;
+}
+
+/* the scroll container, not the page, owns the overflow: a table this
+   wide must never be allowed to bleed past the panel uncontained */
+.chain-scroll {
+  overflow: auto;
+  max-height: 70vh;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  position: relative;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.chain-scroll::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.chain-scroll::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 6px;
+}
+
+.chain-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chain-table {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-family: var(--mono);
+  font-size: 0.88rem;
+}
+
+.chain-table th,
+.chain-table td {
   text-align: right;
+  padding: 0.55rem 0.85rem;
+  min-width: 4.4rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--border);
+}
+
+/* the two header rows stick as ONE block (sticky on <thead> itself, not
+   per-row top offsets, which left a hairline gap that let body rows show
+   through). z-index alone is not enough here: table-layout boxes
+   (thead/tr/th are display:table-*) can paint out of DOM/z-index order,
+   so scrolled-under body text still bled through the sticky header —
+   `isolation: isolate` forces a real stacking context that wins. */
+.chain-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  isolation: isolate;
+}
+
+.chain-table thead th {
+  position: relative;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  font-weight: 600;
+}
+
+.chain-table thead tr:first-child th {
+  font-size: 0.78rem;
+  letter-spacing: 1px;
+  padding: 0.6rem 0.85rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.chain-table .side-label {
+  text-align: center;
+}
+
+.chain-table .side-label-calls {
+  color: var(--green);
+}
+
+.chain-table .side-label-puts {
+  color: var(--red);
+}
+
+.chain-table .strike-header {
+  /* solid, NOT --social-bg: that token is alpha-transparent, and a
+     translucent sticky-header cell lets scrolled body rows ghost
+     through it (the exact bug this comment is here to prevent regressing) */
+  background: var(--bg);
+}
+
+.chain-table tbody tr:nth-child(even) {
+  background: var(--social-bg);
+}
+
+.chain-table tbody tr:hover {
+  background: var(--accent-bg);
 }
 
 .chain-table .strike-cell {
   text-align: center;
   background: var(--social-bg);
+  color: var(--text-h);
+  font-weight: 700;
+  font-size: 0.95rem;
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  position: relative;
 }
 
-.chain-table .atm-row td {
-  border-top: 2px solid var(--border);
+.chain-table tr.atm-row td {
+  background: var(--accent-bg);
+  border-top: 2px solid var(--accent);
+  border-bottom: 2px solid var(--accent);
+  color: var(--text-h);
+  font-weight: 600;
+}
+
+.chain-table tr.atm-row:hover td {
+  background: var(--accent-bg);
+}
+
+.atm-tag {
+  display: block;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--accent);
+  margin-top: 0.1rem;
 }
