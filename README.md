@@ -21,7 +21,8 @@ runs on Pages; you point the static frontend at your own backend URL.
 | Provider-labeled market data + option analytics | ✅ Phase 2, needs backend | `#/chain` — option chain with a source switcher (yfinance free / IBKR), IV + greeks, provenance badge; `POST /analytics/structure` gives PoP/expected profit; nightly job syncs ATM-IV history from IBKR's IV index for `/marketdata/ivrank` |
 | Spec interpreter — approved specs run as real strategies | ✅ Phase 3, needs backend | `#/strategies/{id}` — approve a spec and it appears in the registry (`spec:<slug>`); the Entry rules table gains a live ENTER/WAIT verdict with per-condition observed values, refreshed on every page load |
 | Watchlist + screeners | ✅ Phase 4, needs backend | `#/watchlist` — add symbols, run a screener (expensive premium / high IV rank / Δ-DTE candidates) over the nightly `symbol_metrics` scan, open a result in the Option Chain page |
-| Backtesting, bots, journal, portfolio… | 🔜 phases 5–18 | see the plan |
+| Portfolio view | ✅ Phase 5, needs backend | `#/portfolio` — IBKR live positions + Fidelity CSV upload, merged; grouping toggle, aggregate greeks + beta-weighted delta, forward-looking CVaR risk tiles |
+| Backtesting, bots, journal… | 🔜 phases 6–18 | see the plan |
 
 ---
 
@@ -84,7 +85,7 @@ deployed Pages build connects to your backend.
 ### 3. Check it works
 
 Sidebar pages: **Stock Lookup**, **VIX Screener**, **Strategies**,
-**Option Chain**, **Watchlist**, **Alerts**. Or without the UI:
+**Option Chain**, **Watchlist**, **Portfolio**, **Alerts**. Or without the UI:
 
 ```bash
 curl -s localhost:8000/api/v1/health                                 # liveness

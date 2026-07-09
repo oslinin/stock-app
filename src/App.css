@@ -610,6 +610,48 @@ button.ghost:hover {
   padding: 0 0.15rem;
 }
 
+/* Portfolio */
+.risk-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.75rem;
+  margin: 0.75rem 0;
+}
+
+.risk-tile {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.6rem 0.8rem;
+}
+
+.risk-tile-label {
+  font-size: 0.75rem;
+  color: var(--text);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.risk-tile-value {
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.excluded-list {
+  margin: 0.25rem 0 0;
+  padding-left: 1.2rem;
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+.position-group {
+  margin-top: 1rem;
+}
+
+.position-group h4 {
+  margin-bottom: 0.4rem;
+}
+
 /* Strategy library (specs) */
 .section-badges .badge {
   font-size: 0.7rem;

@@ -13,6 +13,7 @@ from .api import (
     routes_health,
     routes_marketdata,
     routes_orders,
+    routes_portfolio,
     routes_screener,
     routes_specs,
     routes_strategies,
@@ -73,7 +74,7 @@ async def lifespan(app: FastAPI):
         scheduler.start()
         log.info(
             "scheduler started (EOD arming scan + intraday confirmation poll + "
-            "nightly iv_snapshot + nightly watchlist_scan)"
+            "nightly iv_snapshot + nightly watchlist_scan + weekly beta_refresh)"
         )
     yield
     if scheduler is not None:
@@ -111,6 +112,7 @@ def create_app() -> FastAPI:
     app.include_router(routes_marketdata.router, prefix=prefix)
     app.include_router(routes_analytics.router, prefix=prefix)
     app.include_router(routes_watchlist.router, prefix=prefix)
+    app.include_router(routes_portfolio.router, prefix=prefix)
     return app
 
 

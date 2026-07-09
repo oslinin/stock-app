@@ -5,6 +5,7 @@ from apscheduler.triggers.cron import CronTrigger
 
 from ..indicators.opening_range import ET
 from .jobs import (
+    beta_refresh,
     eod_arming_scan,
     intraday_confirmation_poll,
     iv_snapshot,
@@ -44,6 +45,14 @@ def build_scheduler(engine, settings, providers=None) -> AsyncIOScheduler:
             CronTrigger(day_of_week="mon-fri", hour=17, minute=0, timezone=ET),
             args=[providers, settings],
             id="watchlist_scan",
+            max_instances=1,
+            coalesce=True,
+        )
+        scheduler.add_job(
+            beta_refresh,
+            CronTrigger(day_of_week="sat", hour=8, minute=0, timezone=ET),
+            args=[providers, settings],
+            id="beta_refresh",
             max_instances=1,
             coalesce=True,
         )

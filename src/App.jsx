@@ -8,6 +8,7 @@ import StrategyDetail from "./pages/StrategyDetail.jsx";
 import SpecEditor from "./pages/SpecEditor.jsx";
 import OptionChain from "./pages/OptionChain.jsx";
 import Watchlist from "./pages/Watchlist.jsx";
+import Portfolio from "./pages/Portfolio.jsx";
 import "./App.css";
 
 function App() {
@@ -56,6 +57,7 @@ function App() {
         <NavLink to="/strategies">Strategies</NavLink>
         <NavLink to="/chain">Option Chain</NavLink>
         <NavLink to="/watchlist">Watchlist</NavLink>
+        <NavLink to="/portfolio">Portfolio</NavLink>
         <NavLink to="/alerts">Alerts</NavLink>
       </nav>
       <main className="content">
@@ -68,6 +70,7 @@ function App() {
           <Route path="/strategies/:id/edit" element={<SpecEditor />} />
           <Route path="/chain" element={<OptionChain />} />
           <Route path="/watchlist" element={<Watchlist />} />
+          <Route path="/portfolio" element={<Portfolio />} />
           <Route path="/alerts" element={<Alerts />} />
         </Routes>
       </main>

@@ -38,7 +38,8 @@ uv run pytest   # pure-math tests: MACD, signals, payoff, strike selection, orde
                 # provider routing/provenance/budget guard, BS greeks/IV,
                 # IV rank, optionlab glue, indicators, iv_snapshot job,
                 # condition interpreter, spec strategy registry, screeners,
-                # watchlist scan job
+                # watchlist scan job, Fidelity CSV parser, beta OLS,
+                # beta-weighted delta, forward-looking CVaR
 ```
 
 ## Strategy library (Phase 1 of the trading-platform plan)
@@ -86,6 +87,11 @@ resolves them by saving a new version (PUT `/specs/{id}`).
 | `GET/POST/DELETE /watchlist` | watched symbols |
 | `GET /watchlist/screeners` | screener registry (id/name/description) |
 | `POST /watchlist/screeners/{id}/run` | rank the latest `symbol_metrics` scan through a screener |
+| `GET /portfolio/positions?group_by=account\|underlying` | IBKR live + latest Fidelity CSV positions, merged |
+| `GET /portfolio/summary` | aggregate greeks + beta-weighted delta, per-account net liq/BP |
+| `GET /portfolio/risk?lookback_days` | forward-looking 1-day CVaR (95%/99%) by historical simulation |
+| `POST /portfolio/fidelity/upload` | parse + snapshot a Fidelity Positions CSV export |
+| `GET /portfolio/beta?symbol` | cached 1y OLS beta vs SPY (weekly `beta_refresh` job) |
 
 ## Market data layer (Phase 2 of the trading-platform plan)
 
@@ -195,6 +201,53 @@ curl -s -X POST localhost:8000/api/v1/watchlist/screeners/high_ivr/run -H 'conte
 # empty [] until the nightly scan (or a manual `watchlist_scan()` call) has written today's symbol_metrics
 ```
 
+## Portfolio (Phase 5 of the trading-platform plan)
+
+`app/portfolio/` merges two position sources with different freshness:
+IBKR positions are fetched **live** via `ib_async`'s `portfolio()`/`accountSummary()`
+every `/portfolio/*` call (and persisted as a `position_snapshot` row each
+time, for a provenance trail); Fidelity has no live feed, so its
+positions are a **versioned CSV upload** — `POST /portfolio/fidelity/upload`
+parses and snapshots one `position_snapshot` per upload, and `/positions`
+always reads the *latest* Fidelity snapshot per account.
+
+- `fidelity_csv.py`: ~60-line parser for Fidelity's Positions.csv export
+  (options symbol format `-AAPL250117C150`, `$`/`,`/`%`/`()` quirks,
+  disclaimer/footer rows dropped by requiring a parseable symbol+quantity).
+- `beta.py` + the weekly `beta_refresh` job: 1y daily OLS beta vs SPY for
+  every watchlist symbol (numpy `polyfit`), with an R² low-confidence flag.
+- `bwdelta.py`: tastytrade's published beta-weighted-delta formula
+  (`delta * beta * underlying/benchmark price ratio`, ×100×contracts for
+  options) — see `tests/test_bwdelta.py` for the hand-worked numbers.
+- `risk.py`: forward-looking 1-day CVaR by historical simulation — full
+  Black-Scholes repricing per option position (IV held constant —
+  "sticky-IV"; a beta-scaled vol shock is a documented upgrade, not built
+  this phase), linear repricing for stock. `GET /portfolio/risk` fetches
+  each position's spot (`QUOTE`) and, for options, a matching chain row's
+  IV (`CHAIN`) — reusing the Phase 2 provider layer exactly like
+  `build_market_context` (Phase 3) and `watchlist_scan` (Phase 4) do.
+  Non-priceable positions (no quote, no matching chain row, insufficient
+  price history) are excluded from the simulation and listed with a reason.
+- **Deferred**: IBKR model-greek enrichment (positions show quantity/price
+  correctly; delta/theta/vega need a second `reqMktData` greeks round trip
+  per contract, the same enrichment `ibkr_provider.py` already does for
+  chains — not built this phase, so `/portfolio/summary`'s aggregate
+  greeks read `null` for IBKR positions until that follow-up lands).
+  `group_by=campaign|strategy` (needs journal linkage / manual tags — no
+  journal exists yet). Realized equity-curve CVaR (needs journal history).
+
+Smoke test (backend running):
+
+```bash
+curl -s -F "file=@positions.csv" -F "account_label=main" \
+  localhost:8000/api/v1/portfolio/fidelity/upload
+curl -s localhost:8000/api/v1/portfolio/positions
+curl -s "localhost:8000/api/v1/portfolio/positions?group_by=underlying"
+curl -s localhost:8000/api/v1/portfolio/summary
+curl -s localhost:8000/api/v1/portfolio/risk   # cvar95/cvar99, or excluded[] reasons without live data
+curl -s "localhost:8000/api/v1/portfolio/beta?symbol=SPY"   # 404 until beta_refresh has run
+```
+
 ## Scheduler
 
 - `eod_arming_scan` — 16:20 ET weekdays: detects the MACD bottom signal,
@@ -211,6 +264,10 @@ curl -s -X POST localhost:8000/api/v1/watchlist/screeners/high_ivr/run -H 'conte
 - `watchlist_scan` — 17:00 ET weekdays: samples each watched symbol's
   chain into `symbol_metrics` for the screener registry. Skips with a
   log line when no chain-capable provider is registered.
+- `beta_refresh` — 08:00 ET Saturdays: 1y daily OLS beta vs SPY for every
+  watchlist symbol, cached in `beta_cache`. Weekly because a 1y beta
+  barely moves day to day, and running off-market on a non-trading day
+  keeps it off the weekday jobs' provider-pacing budget.
 
 ## Safety
 
