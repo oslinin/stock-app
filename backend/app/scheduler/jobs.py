@@ -82,58 +82,39 @@ async def watchlist_scan_job(providers, settings) -> None:
     await watchlist_scan(provider, settings)
 
 
-async def beta_refresh(providers, settings) -> None:
-    """Weekly beta refresh: 1y daily OLS beta vs SPY for every watchlist
-    symbol (same universe watchlist_scan already covers) — stored in
-    beta_cache for /portfolio/beta and /portfolio/summary's beta-weighted
-    delta. Same graceful-degradation discipline as the other jobs: a
-    provider error skips a symbol, never crashes the run."""
+async def beta_refresh(client, settings) -> None:
+    """Weekly beta refresh: pulls each watchlist symbol's beta straight
+    from IB Gateway's fundamental-ratios feed (app/portfolio/beta.py) —
+    never computed in this process. A symbol IB has no beta for (gateway
+    down, or the account lacks the Reuters Fundamentals entitlement that
+    tick needs) is skipped, not estimated."""
     from sqlmodel import select
 
-    from ..dataproviders.base import BARS, ProviderError
     from ..db.session import session_scope
-    from ..portfolio.beta import compute_beta
+    from ..portfolio.beta import fetch_beta
     from ..portfolio.models import BetaCache, utcnow
-    from ..portfolio.risk import daily_returns
     from ..watchlist.models import WatchlistItem
-
-    try:
-        provider = providers.route(BARS)
-    except ProviderError:
-        log.warning("beta_refresh: no bars-capable provider registered, skipping")
-        return
-
-    try:
-        benchmark_bars = await provider.bars("SPY", period="1y", interval="1d")
-    except ProviderError as exc:
-        log.warning("beta_refresh: could not load SPY benchmark bars: %s", exc)
-        return
-    benchmark_returns = daily_returns([b["close"] for b in benchmark_bars])
 
     with session_scope() as session:
         symbols = [w.symbol for w in session.exec(select(WatchlistItem)).all()]
 
     for symbol in symbols:
-        try:
-            bars = await provider.bars(symbol, period="1y", interval="1d")
-        except ProviderError as exc:
-            log.warning("beta_refresh skipped for %s: %s", symbol, exc)
+        beta = await fetch_beta(client, symbol)
+        if beta is None:
+            log.warning(
+                "beta_refresh: no beta available for %s (gateway down, or no "
+                "fundamentals entitlement)",
+                symbol,
+            )
             continue
-        returns = daily_returns([b["close"] for b in bars])
-        n = min(len(returns), len(benchmark_returns))
-        result = compute_beta(returns[-n:], benchmark_returns[-n:]) if n >= 2 else None
-        if result is None:
-            log.warning("beta_refresh: beta undefined for %s (insufficient/flat data)", symbol)
-            continue
-        beta, r2 = result
         with session_scope() as session:
             existing = session.exec(select(BetaCache).where(BetaCache.symbol == symbol)).first()
             if existing:
-                existing.beta, existing.r2, existing.window_days = beta, r2, n
+                existing.beta = beta
                 existing.computed_at = utcnow()
                 session.add(existing)
             else:
-                session.add(BetaCache(symbol=symbol, beta=beta, r2=r2, window_days=n))
+                session.add(BetaCache(symbol=symbol, beta=beta))
 
 
 async def eod_arming_scan(engine, settings) -> None:

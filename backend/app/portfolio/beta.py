@@ -1,29 +1,56 @@
-"""1-variable OLS beta of a symbol's daily returns against a benchmark
-(SPY), with the R2 low-confidence flag the plan calls for."""
+"""Beta vs the benchmark comes from IB Gateway's fundamental-ratios feed
+(generic tick 258) — never computed in this process. If the account
+lacks the market-data entitlement that tick needs (Reuters Fundamentals,
+a paid subscription on many exchanges), IB simply never populates the
+ratio and the symbol is skipped; that's an acceptable gap, not something
+to route around with an in-process regression."""
 
 from __future__ import annotations
 
-import numpy as np
+import asyncio
+import math
 
-LOW_R2_THRESHOLD = 0.3
+from ..ibkr.client import IBClient
+from ..ibkr.contracts import IB_TIMEOUT
+from ..ibkr.errors import IBKRUnavailable
+from ..ibkr.ib_lib import Stock
+
+FUNDAMENTAL_RATIOS_TICK = "258"
+POLL_INTERVAL_SECONDS = 0.25
+MAX_WAIT_SECONDS = 5.0
 
 
-def compute_beta(symbol_returns: list[float], benchmark_returns: list[float]) -> tuple[float, float] | None:
-    """(beta, r2); None when there aren't enough points or the benchmark
-    has no variance (beta undefined)."""
-    if len(symbol_returns) != len(benchmark_returns) or len(symbol_returns) < 2:
+def extract_beta(ratios) -> float | None:
+    """Pull Beta out of an ib_async FundamentalRatios object. None if the
+    tick never arrived, the tag is absent, or IB's own "no data" sentinel
+    (-99999.99, which ib_async already turns into NaN) came back."""
+    if ratios is None:
         return None
-    y = np.array(symbol_returns, dtype=float)
-    x = np.array(benchmark_returns, dtype=float)
-    if np.isclose(x.std(), 0.0):
+    value = getattr(ratios, "Beta", None)
+    if value is None:
         return None
-    slope, intercept = np.polyfit(x, y, 1)
-    predicted = slope * x + intercept
-    ss_res = float(np.sum((y - predicted) ** 2))
-    ss_tot = float(np.sum((y - y.mean()) ** 2))
-    r2 = 1.0 - ss_res / ss_tot if ss_tot > 0 else 1.0
-    return float(slope), r2
+    try:
+        value = float(value)
+    except (TypeError, ValueError):
+        return None
+    return None if math.isnan(value) else value
 
 
-def is_low_confidence(r2: float) -> bool:
-    return r2 < LOW_R2_THRESHOLD
+async def fetch_beta(client: IBClient, symbol: str) -> float | None:
+    try:
+        ib = client.require()
+    except IBKRUnavailable:
+        return None
+    contract = Stock(symbol.upper(), "SMART", "USD")
+    qualified = await asyncio.wait_for(ib.qualifyContractsAsync(contract), IB_TIMEOUT)
+    if not qualified:
+        return None
+    ticker = ib.reqMktData(qualified[0], genericTickList=FUNDAMENTAL_RATIOS_TICK)
+    try:
+        waited = 0.0
+        while ticker.fundamentalRatios is None and waited < MAX_WAIT_SECONDS:
+            await asyncio.sleep(POLL_INTERVAL_SECONDS)
+            waited += POLL_INTERVAL_SECONDS
+        return extract_beta(ticker.fundamentalRatios)
+    finally:
+        ib.cancelMktData(qualified[0])

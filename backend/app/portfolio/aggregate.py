@@ -13,21 +13,21 @@ GROUP_KEYS = {
 
 def enrich_position(
     position: dict,
-    beta_by_symbol: dict[str, tuple[float, float]],
+    beta_by_symbol: dict[str, float],
     underlying_prices: dict[str, float],
     benchmark_price: float | None,
 ) -> dict:
     """Adds betaWeightedDelta to a copy of the position — None when any
-    required input (a model delta, a cached beta, a live underlying
-    price, the benchmark price) is missing, never a guessed zero."""
+    required input (a model delta, an IB-reported cached beta, a live
+    underlying price, the benchmark price) is missing, never a guessed
+    zero. beta is whatever IB Gateway last reported (portfolio/beta.py) —
+    never computed here."""
     out = dict(position)
-    beta_r2 = beta_by_symbol.get(position["symbol"])
+    beta = beta_by_symbol.get(position["symbol"])
     underlying_price = underlying_prices.get(position["symbol"])
     delta = position.get("delta")
-    if beta_r2 is not None and underlying_price and benchmark_price and delta is not None:
-        beta, r2 = beta_r2
+    if beta is not None and underlying_price and benchmark_price and delta is not None:
         out["beta"] = beta
-        out["betaR2"] = r2
         out["betaWeightedDelta"] = beta_weighted_delta(
             delta, position["quantity"], position.get("multiplier", 1),
             beta, underlying_price, benchmark_price,

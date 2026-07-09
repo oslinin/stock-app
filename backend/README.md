@@ -38,7 +38,7 @@ uv run pytest   # pure-math tests: MACD, signals, payoff, strike selection, orde
                 # provider routing/provenance/budget guard, BS greeks/IV,
                 # IV rank, optionlab glue, indicators, iv_snapshot job,
                 # condition interpreter, spec strategy registry, screeners,
-                # watchlist scan job, Fidelity CSV parser, beta OLS,
+                # watchlist scan job, Fidelity CSV parser, beta extraction,
                 # beta-weighted delta, forward-looking CVaR
 ```
 
@@ -91,7 +91,7 @@ resolves them by saving a new version (PUT `/specs/{id}`).
 | `GET /portfolio/summary` | aggregate greeks + beta-weighted delta, per-account net liq/BP |
 | `GET /portfolio/risk?lookback_days` | forward-looking 1-day CVaR (95%/99%) by historical simulation |
 | `POST /portfolio/fidelity/upload` | parse + snapshot a Fidelity Positions CSV export |
-| `GET /portfolio/beta?symbol` | cached 1y OLS beta vs SPY (weekly `beta_refresh` job) |
+| `GET /portfolio/beta?symbol` | cached beta from IB Gateway's fundamental-ratios feed (weekly `beta_refresh` job) |
 
 ## Market data layer (Phase 2 of the trading-platform plan)
 
@@ -214,8 +214,11 @@ always reads the *latest* Fidelity snapshot per account.
 - `fidelity_csv.py`: ~60-line parser for Fidelity's Positions.csv export
   (options symbol format `-AAPL250117C150`, `$`/`,`/`%`/`()` quirks,
   disclaimer/footer rows dropped by requiring a parseable symbol+quantity).
-- `beta.py` + the weekly `beta_refresh` job: 1y daily OLS beta vs SPY for
-  every watchlist symbol (numpy `polyfit`), with an R² low-confidence flag.
+- `beta.py` + the weekly `beta_refresh` job: pulls each watchlist symbol's
+  beta straight from IB Gateway's fundamental-ratios feed (generic tick
+  258) — never computed in-process. No Reuters Fundamentals entitlement
+  on the account means IB just never populates the ratio; the symbol is
+  skipped, not estimated with our own regression.
 - `bwdelta.py`: tastytrade's published beta-weighted-delta formula
   (`delta * beta * underlying/benchmark price ratio`, ×100×contracts for
   options) — see `tests/test_bwdelta.py` for the hand-worked numbers.
@@ -264,10 +267,11 @@ curl -s "localhost:8000/api/v1/portfolio/beta?symbol=SPY"   # 404 until beta_ref
 - `watchlist_scan` — 17:00 ET weekdays: samples each watched symbol's
   chain into `symbol_metrics` for the screener registry. Skips with a
   log line when no chain-capable provider is registered.
-- `beta_refresh` — 08:00 ET Saturdays: 1y daily OLS beta vs SPY for every
-  watchlist symbol, cached in `beta_cache`. Weekly because a 1y beta
-  barely moves day to day, and running off-market on a non-trading day
-  keeps it off the weekday jobs' provider-pacing budget.
+- `beta_refresh` — 08:00 ET Saturdays: pulls each watchlist symbol's beta
+  from IB Gateway's fundamental-ratios feed, cached in `beta_cache`.
+  Weekly because a broker-reported beta barely moves day to day, and
+  running off-market on a non-trading day keeps it off the weekday jobs'
+  provider-pacing budget.
 
 ## Safety
 

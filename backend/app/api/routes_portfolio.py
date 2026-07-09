@@ -110,7 +110,7 @@ async def portfolio_summary(request: Request) -> dict:
     all_positions = _all_positions(request)
 
     with session_scope() as session:
-        betas = {b.symbol: (b.beta, b.r2) for b in session.exec(select(BetaCache)).all()}
+        betas = {b.symbol: b.beta for b in session.exec(select(BetaCache)).all()}
 
     symbols = {p["symbol"] for p in all_positions} | {"SPY"}
     underlying_prices = await _quotes_concurrently(providers, symbols)
@@ -265,13 +265,13 @@ def get_beta(symbol: str) -> dict:
     if row is None:
         raise HTTPException(
             404,
-            f"no cached beta for '{symbol}' yet — the weekly beta_refresh job "
-            "computes it for watchlist symbols",
+            f"no cached beta for '{symbol}' yet — the weekly beta_refresh job pulls "
+            "it from IB Gateway's fundamental-ratios feed for watchlist symbols "
+            "(needs the gateway up and a Reuters Fundamentals entitlement)",
         )
     return {
         "symbol": row.symbol,
         "beta": row.beta,
-        "r2": row.r2,
-        "windowDays": row.window_days,
+        "source": row.source,
         "computedAt": row.computed_at.isoformat(),
     }

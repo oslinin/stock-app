@@ -70,7 +70,7 @@ async def lifespan(app: FastAPI):
     client.start()
     scheduler = None
     if settings.scheduler_enabled:
-        scheduler = build_scheduler(engine, settings, providers=providers)
+        scheduler = build_scheduler(engine, settings, providers=providers, ibkr_client=client)
         scheduler.start()
         log.info(
             "scheduler started (EOD arming scan + intraday confirmation poll + "

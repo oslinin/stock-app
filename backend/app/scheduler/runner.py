@@ -13,7 +13,7 @@ from .jobs import (
 )
 
 
-def build_scheduler(engine, settings, providers=None) -> AsyncIOScheduler:
+def build_scheduler(engine, settings, providers=None, ibkr_client=None) -> AsyncIOScheduler:
     scheduler = AsyncIOScheduler(timezone=ET)
     scheduler.add_job(
         eod_arming_scan,
@@ -48,10 +48,11 @@ def build_scheduler(engine, settings, providers=None) -> AsyncIOScheduler:
             max_instances=1,
             coalesce=True,
         )
+    if ibkr_client is not None:
         scheduler.add_job(
             beta_refresh,
             CronTrigger(day_of_week="sat", hour=8, minute=0, timezone=ET),
-            args=[providers, settings],
+            args=[ibkr_client, settings],
             id="beta_refresh",
             max_instances=1,
             coalesce=True,

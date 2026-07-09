@@ -44,11 +44,13 @@ class FidelityImport(SQLModel, table=True):
 
 
 class BetaCache(SQLModel, table=True):
+    """Beta as reported by IB Gateway's fundamental-ratios feed — never
+    computed in-process (app/portfolio/beta.py)."""
+
     __tablename__ = "beta_cache"
 
     id: int | None = Field(default=None, primary_key=True)
     symbol: str = Field(index=True, unique=True)
     beta: float
-    r2: float
-    window_days: int
+    source: str = "ibkr_fundamentals"
     computed_at: datetime = Field(default_factory=utcnow)
