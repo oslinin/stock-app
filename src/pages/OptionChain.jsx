@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { errorMessage } from "../api/client";
 import { getChain, getExpiries, getProviders } from "../api/marketdata";
 import { hasBackend } from "../config";
@@ -55,6 +56,16 @@ function OptionChain() {
 
   const scrollRef = useRef(null);
   const atmCellRef = useRef(null);
+
+  // deep link from Screeners ("open in Option Chain"): ?symbol=AAPL
+  const [searchParams] = useSearchParams();
+  useEffect(() => {
+    const s = searchParams.get("symbol");
+    if (!s) return;
+    const upper = s.toUpperCase();
+    setSymbol(upper);
+    setPending(upper);
+  }, [searchParams]);
 
   useEffect(() => {
     if (!connected) return;

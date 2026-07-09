@@ -36,7 +36,9 @@ Then point the frontend at it: `echo "VITE_API_BASE=http://localhost:8000/api/v1
 uv run pytest   # pure-math tests: MACD, signals, payoff, strike selection, order build,
                 # strategy spec schema, doc compiler, spec persistence,
                 # provider routing/provenance/budget guard, BS greeks/IV,
-                # IV rank, optionlab glue, indicators, iv_snapshot job
+                # IV rank, optionlab glue, indicators, iv_snapshot job,
+                # condition interpreter, spec strategy registry, screeners,
+                # watchlist scan job
 ```
 
 ## Strategy library (Phase 1 of the trading-platform plan)
@@ -81,6 +83,9 @@ resolves them by saving a new version (PUT `/specs/{id}`).
 | `GET /marketdata/ivrank?symbol` | IV rank/percentile over iv_history |
 | `POST /analytics/structure` | optionlab PoP / expected profit / P&L for arbitrary legs |
 | `GET /specs/{id}/verdict` | live entry-condition verdict (ENTER/WAIT) for an **approved** spec |
+| `GET/POST/DELETE /watchlist` | watched symbols |
+| `GET /watchlist/screeners` | screener registry (id/name/description) |
+| `POST /watchlist/screeners/{id}/run` | rank the latest `symbol_metrics` scan through a screener |
 
 ## Market data layer (Phase 2 of the trading-platform plan)
 
@@ -157,6 +162,39 @@ curl -s localhost:8000/api/v1/strategies                # spec:iv-rank-demo now 
 curl -s localhost:8000/api/v1/specs/<id>/verdict         # {verdict, checks:[{kind,pass,observed,detail}]}
 ```
 
+## Watchlist + screeners (Phase 4 of the trading-platform plan)
+
+`app/watchlist/` is a separate package from the VIX-specific
+`app/screener/` (per the plan's module tree) — a symbol's watchlist
+membership and daily chain sample have nothing to do with the VIX hedge
+strategy engine. Each night, `watchlist_scan` samples one representative
+strike (nearest spot) from each watched symbol's chain at the nearest
+listed expiry and writes a `symbol_metrics` row (idempotent per
+symbol/day; a provider error skips that symbol without crashing the
+job, same discipline as `iv_snapshot`). Screeners
+(`app/watchlist/screeners.py`) are pure functions over that table — no
+live chain fetch at request time — so `POST /watchlist/screeners/{id}/run`
+answers instantly: `expensive_premium` (highest premium/day-of-notional),
+`high_ivr` (IV rank ≥ threshold, default 50), `delta_dte_candidates`
+(0.16–0.30Δ, 21–45 DTE band). All three respect optional
+`min_open_interest`/`max_spread_pct` liquidity params. `no_earnings_within_days`
+from the plan's screener list is deferred — no earnings-calendar data
+source exists yet (same rationale as Phase 3's deferred spec conditions).
+
+The Watchlist page has no payoff-builder yet, so a screener row's "open
+chain" link deep-links to `/chain?symbol=<sym>` (Option Chain, pre-filled)
+instead — a scoping decision, not the plan's "opens pre-filled payoff."
+
+Smoke test (backend running):
+
+```bash
+curl -s -X POST localhost:8000/api/v1/watchlist -H 'content-type: application/json' -d '{"symbol":"SPY"}'
+curl -s localhost:8000/api/v1/watchlist
+curl -s localhost:8000/api/v1/watchlist/screeners
+curl -s -X POST localhost:8000/api/v1/watchlist/screeners/high_ivr/run -H 'content-type: application/json' -d '{}'
+# empty [] until the nightly scan (or a manual `watchlist_scan()` call) has written today's symbol_metrics
+```
+
 ## Scheduler
 
 - `eod_arming_scan` — 16:20 ET weekdays: detects the MACD bottom signal,
@@ -170,6 +208,9 @@ curl -s localhost:8000/api/v1/specs/<id>/verdict         # {verdict, checks:[{ki
   missing days (a night with the gateway down is backfilled by the next
   successful sync). Idempotent per symbol/day; skips with a log line
   when no IV-history-capable provider is registered.
+- `watchlist_scan` — 17:00 ET weekdays: samples each watched symbol's
+  chain into `symbol_metrics` for the screener registry. Skips with a
+  log line when no chain-capable provider is registered.
 
 ## Safety
 

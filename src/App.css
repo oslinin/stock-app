@@ -581,6 +581,35 @@ button.ghost:hover {
   margin-bottom: 0.75rem;
 }
 
+/* Watchlist chips */
+.watchlist-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.75rem 0;
+}
+
+.watchlist-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.5rem 0.3rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg);
+  font-size: 0.9rem;
+}
+
+.watchlist-chip button {
+  border: none;
+  background: none;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0 0.15rem;
+}
+
 /* Strategy library (specs) */
 .section-badges .badge {
   font-size: 0.7rem;

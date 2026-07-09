@@ -16,6 +16,7 @@ from .api import (
     routes_screener,
     routes_specs,
     routes_strategies,
+    routes_watchlist,
 )
 from .config import get_settings
 from .dataproviders.alphavantage import AlphaVantageProvider, CallBudget, DbCallStore
@@ -71,7 +72,8 @@ async def lifespan(app: FastAPI):
         scheduler = build_scheduler(engine, settings, providers=providers)
         scheduler.start()
         log.info(
-            "scheduler started (EOD arming scan + intraday confirmation poll + nightly iv_snapshot)"
+            "scheduler started (EOD arming scan + intraday confirmation poll + "
+            "nightly iv_snapshot + nightly watchlist_scan)"
         )
     yield
     if scheduler is not None:
@@ -108,6 +110,7 @@ def create_app() -> FastAPI:
     app.include_router(routes_specs.router, prefix=prefix)
     app.include_router(routes_marketdata.router, prefix=prefix)
     app.include_router(routes_analytics.router, prefix=prefix)
+    app.include_router(routes_watchlist.router, prefix=prefix)
     return app
 
 

@@ -66,6 +66,22 @@ async def _sync_iv_history(provider, symbol: str) -> int:
     return added
 
 
+async def watchlist_scan_job(providers, settings) -> None:
+    """Nightly symbol_metrics sweep over the watchlist. Reuse-first: any
+    provider with a priced chain (yfinance by default) can sample it —
+    same graceful-degradation discipline as iv_snapshot: a provider
+    error skips the symbol, never crashes the job."""
+    from ..dataproviders.base import CHAIN, ProviderError
+    from ..watchlist.scan_job import watchlist_scan
+
+    try:
+        provider = providers.route(CHAIN)
+    except ProviderError:
+        log.warning("watchlist_scan: no chain-capable provider registered, skipping")
+        return
+    await watchlist_scan(provider, settings)
+
+
 async def eod_arming_scan(engine, settings) -> None:
     """After the close: refresh state; if a bottom signal armed today, alert."""
     for strategy in engine.registry.values():

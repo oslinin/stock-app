@@ -7,6 +7,7 @@ import Strategies from "./pages/Strategies.jsx";
 import StrategyDetail from "./pages/StrategyDetail.jsx";
 import SpecEditor from "./pages/SpecEditor.jsx";
 import OptionChain from "./pages/OptionChain.jsx";
+import Watchlist from "./pages/Watchlist.jsx";
 import "./App.css";
 
 function App() {
@@ -54,6 +55,7 @@ function App() {
         <NavLink to="/screener">VIX Screener</NavLink>
         <NavLink to="/strategies">Strategies</NavLink>
         <NavLink to="/chain">Option Chain</NavLink>
+        <NavLink to="/watchlist">Watchlist</NavLink>
         <NavLink to="/alerts">Alerts</NavLink>
       </nav>
       <main className="content">
@@ -65,6 +67,7 @@ function App() {
           <Route path="/strategies/:id" element={<StrategyDetail />} />
           <Route path="/strategies/:id/edit" element={<SpecEditor />} />
           <Route path="/chain" element={<OptionChain />} />
+          <Route path="/watchlist" element={<Watchlist />} />
           <Route path="/alerts" element={<Alerts />} />
         </Routes>
       </main>
