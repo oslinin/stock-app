@@ -82,6 +82,15 @@ async def watchlist_scan_job(providers, settings) -> None:
     await watchlist_scan(provider, settings)
 
 
+async def bot_tick_job(providers, client, settings) -> None:
+    """Thin scheduler-facing wrapper — see app/bots/tick_job.py for the
+    actual per-bot orchestration (kept in bots/ alongside the runtime it
+    drives, same layering as watchlist/scan_job.py)."""
+    from ..bots.tick_job import bot_tick
+
+    await bot_tick(providers, client, settings)
+
+
 async def beta_refresh(client, settings) -> None:
     """Weekly beta refresh: pulls each watchlist symbol's beta straight
     from IB Gateway's fundamental-ratios feed (app/portfolio/beta.py) —

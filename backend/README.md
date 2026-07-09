@@ -39,7 +39,9 @@ uv run pytest   # pure-math tests: MACD, signals, payoff, strike selection, orde
                 # IV rank, optionlab glue, indicators, iv_snapshot job,
                 # condition interpreter, spec strategy registry, screeners,
                 # watchlist scan job, Fidelity CSV parser, beta extraction,
-                # beta-weighted delta, forward-looking CVaR
+                # beta-weighted delta, forward-looking CVaR, bot state
+                # machine, risk gate, bot lifecycle/compile_bot, safety
+                # invariants (transmit=True gating)
 ```
 
 ## Strategy library (Phase 1 of the trading-platform plan)
@@ -92,6 +94,9 @@ resolves them by saving a new version (PUT `/specs/{id}`).
 | `GET /portfolio/risk?lookback_days` | forward-looking 1-day CVaR (95%/99%) by historical simulation |
 | `POST /portfolio/fidelity/upload` | parse + snapshot a Fidelity Positions CSV export |
 | `GET /portfolio/beta?symbol` | cached beta from IB Gateway's fundamental-ratios feed (weekly `beta_refresh` job) |
+| `GET/POST /bots`, `GET /bots/{id}` | bot CRUD — creation blocked by `compile_bot()` unless the spec is fully runtime-executable |
+| `GET /bots/{id}/runs` | per-tick audit trail (position_state, action, detail) |
+| `POST /bots/{id}/start\|pause\|kill`, `POST /bots/kill-all` | lifecycle + kill switch (cancels a pending order, never flattens an open position) |
 
 ## Market data layer (Phase 2 of the trading-platform plan)
 
@@ -251,6 +256,59 @@ curl -s localhost:8000/api/v1/portfolio/risk   # cvar95/cvar99, or excluded[] re
 curl -s "localhost:8000/api/v1/portfolio/beta?symbol=SPY"   # 404 until beta_refresh has run
 ```
 
+## Paper bot (Phase 6 of the trading-platform plan)
+
+`app/brokers/` (the `BrokerAdapter` protocol + `IBKRAdapter`) and
+`app/bots/` (state machine, risk gate, leg resolver, compile_bot, sim
+broker) together let an **approved spec run itself**: FLAT → entry
+conditions + gates pass → `ENTRY_SIGNALED` → risk gate → `ORDER_PENDING`
+→ fill → `IN_POSITION`. `bot_tick` (RTH, 1 min) drives every `running`
+bot's tick, reusing `build_market_context` (Phase 3) and the `CHAIN`
+provider (Phase 2) — same layers every other job builds on.
+
+**Safety** (`test_safety_invariants.py` enforces this, not just docs):
+`transmit=True` may appear in exactly one place in the entire codebase —
+`brokers/ibkr_adapter.py`'s auto-transmit branch, and even there it
+requires three independent conditions at once: `ibkr_mode == "paper"`,
+`PAPER_AUTO_TRANSMIT=true`, and the gateway actually pointed at a
+recognized paper port (4002/7497). A live bot (`mode="live"`) never
+auto-transmits this phase — live warm-up/per-order approval isn't built
+yet, so a live order always stages with `transmit=False`, same as the
+existing `/orders/ticket` path, and `mode="live"` bots are refused
+outright unless `ALLOW_LIVE_TRADING=true`.
+
+`compile_bot()` is the strictest of the plan's three spec compilers: a
+bot can't be created (or started) from a spec with unspecified exits, an
+unsupported condition kind, an unsupported strike rule, or **any**
+adjustment/roll rule — since exit/adjustment monitoring (`MANAGING`)
+isn't built this phase, a bot must never open a position it can't safely
+manage the exit of. `POST /bots` returns the exact blocker list.
+
+New `.env` keys (see `.env.example`): `ALLOW_LIVE_TRADING` (default
+false), `PAPER_AUTO_TRANSMIT` (default false), `BOT_MAX_BP_PCT`,
+`BOT_MAX_CONCURRENT_GLOBAL`, `BOT_DAILY_LOSS_HALT_USD`.
+
+**Deferred this phase** (documented, not silently missing):
+exit/adjustment monitoring (`MANAGING` state — rolls, profit-target/
+stop-loss exits); portfolio-level risk caps (max beta-weighted delta,
+net short vega, correlated-exposure) — the risk gate covers BP%,
+concurrency, and daily-loss halt only; `bot_tick`'s risk inputs use a
+placeholder NetLiq (100k) and zero realized P&L today until
+`portfolio/ibkr_positions.py`'s `accountSummary()` and journal history
+are wired in; ntfy action buttons; the watchdog/heartbeat job; the Bots
+frontend page's start/pause/kill controls beyond a basic list+create.
+
+Smoke test (backend running, a spec approved with `curl` per the specs
+section above — needs fully-specified exits, no adjustments):
+
+```bash
+curl -s -X POST localhost:8000/api/v1/bots -H 'content-type: application/json' \
+  -d '{"specId": <id>, "mode": "paper", "bpPct": 0.1, "fixedContracts": 1}'
+curl -s -X POST localhost:8000/api/v1/bots/<bot id>/start
+curl -s localhost:8000/api/v1/bots/<bot id>/runs
+curl -s -X POST localhost:8000/api/v1/bots/<bot id>/kill
+```
+
 ## Scheduler
 
 - `eod_arming_scan` — 16:20 ET weekdays: detects the MACD bottom signal,
@@ -272,6 +330,9 @@ curl -s "localhost:8000/api/v1/portfolio/beta?symbol=SPY"   # 404 until beta_ref
   Weekly because a broker-reported beta barely moves day to day, and
   running off-market on a non-trading day keeps it off the weekday jobs'
   provider-pacing budget.
+- `bot_tick` — every minute, 09:00–16:00 ET weekdays: ticks every
+  `running` bot's state machine once. A bot-level exception is caught
+  and logged; one bot's failure never stops the rest from ticking.
 
 ## Safety
 

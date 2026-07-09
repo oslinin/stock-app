@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse
 from .api import (
     routes_alerts,
     routes_analytics,
+    routes_bots,
     routes_health,
     routes_marketdata,
     routes_orders,
@@ -74,7 +75,8 @@ async def lifespan(app: FastAPI):
         scheduler.start()
         log.info(
             "scheduler started (EOD arming scan + intraday confirmation poll + "
-            "nightly iv_snapshot + nightly watchlist_scan + weekly beta_refresh)"
+            "nightly iv_snapshot + nightly watchlist_scan + weekly beta_refresh + "
+            "RTH bot_tick)"
         )
     yield
     if scheduler is not None:
@@ -113,6 +115,7 @@ def create_app() -> FastAPI:
     app.include_router(routes_analytics.router, prefix=prefix)
     app.include_router(routes_watchlist.router, prefix=prefix)
     app.include_router(routes_portfolio.router, prefix=prefix)
+    app.include_router(routes_bots.router, prefix=prefix)
     return app
 
 

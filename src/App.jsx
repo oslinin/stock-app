@@ -9,6 +9,7 @@ import SpecEditor from "./pages/SpecEditor.jsx";
 import OptionChain from "./pages/OptionChain.jsx";
 import Watchlist from "./pages/Watchlist.jsx";
 import Portfolio from "./pages/Portfolio.jsx";
+import Bots from "./pages/Bots.jsx";
 import "./App.css";
 
 function App() {
@@ -58,6 +59,7 @@ function App() {
         <NavLink to="/chain">Option Chain</NavLink>
         <NavLink to="/watchlist">Watchlist</NavLink>
         <NavLink to="/portfolio">Portfolio</NavLink>
+        <NavLink to="/bots">Bots</NavLink>
         <NavLink to="/alerts">Alerts</NavLink>
       </nav>
       <main className="content">
@@ -71,6 +73,7 @@ function App() {
           <Route path="/chain" element={<OptionChain />} />
           <Route path="/watchlist" element={<Watchlist />} />
           <Route path="/portfolio" element={<Portfolio />} />
+          <Route path="/bots" element={<Bots />} />
           <Route path="/alerts" element={<Alerts />} />
         </Routes>
       </main>

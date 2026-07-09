@@ -53,6 +53,14 @@ class Settings(BaseSettings):
     vix_strike_window_below: float = 8.0
     vix_strike_window_above: float = 5.0
 
+    # bots (phase 6) — safety ladder: staged by default; a bot may only
+    # auto-transmit in its own paper account, and only with this on.
+    allow_live_trading: bool = False
+    paper_auto_transmit: bool = False
+    bot_max_bp_pct: float = 0.5
+    bot_max_concurrent_global: int = 10
+    bot_daily_loss_halt_usd: float = 0.0  # 0 = disabled
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
