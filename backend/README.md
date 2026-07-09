@@ -80,6 +80,7 @@ resolves them by saving a new version (PUT `/specs/{id}`).
 | `GET /marketdata/indicators?symbol&set=macd,rsi,bbands,sma20,atr` | indicator series over bars |
 | `GET /marketdata/ivrank?symbol` | IV rank/percentile over iv_history |
 | `POST /analytics/structure` | optionlab PoP / expected profit / P&L for arbitrary legs |
+| `GET /specs/{id}/verdict` | live entry-condition verdict (ENTER/WAIT) for an **approved** spec |
 
 ## Market data layer (Phase 2 of the trading-platform plan)
 
@@ -115,6 +116,45 @@ curl -s -X POST localhost:8000/api/v1/analytics/structure \
                {"right":"P","action":"buy","strike":90,"premium":1.1}],
        "spot":100,"volatility":0.25,"daysToTarget":45}'
 curl -s "localhost:8000/api/v1/marketdata/ivrank?symbol=SPY"   # 404 until iv_history has rows
+```
+
+## Spec interpreter (Phase 3 of the trading-platform plan)
+
+An **approved** spec now runs as a real strategy: `app/specs/spec_strategy.py`
+wraps it to the existing `Strategy` ABC, so it appears in `/strategies`
+(and the StrategyDetail page) with no new plumbing — the registry just
+grows an entry with id `spec:<slug>`. `app/specs/interpreter.py` evaluates
+its `entry` conditions (AND semantics) against a `MarketContext` built
+from Phase 2's dataproviders + `iv_history` — the same layers
+`/marketdata` uses. Ten condition kinds are wired so far (`iv_rank_gte`,
+`iv_rank_lte`, `dte_between`, `delta_between`, `vix_below`, `vix_above`,
+`price_above_sma`, `price_below_sma`, `day_of_week_in`,
+`credit_min_pct_width`); the rest (`funding_rate_*`, `edge_score_gte`,
+`cot_zscore_gte`, `gex_regime_is`, `no_earnings_within_days`) need data
+sources later phases haven't built yet (crypto funding, edge scoring,
+COT, GEX, an earnings calendar) — an unimplemented kind fails closed
+(counts as not-passed) rather than being silently skipped or crashing.
+
+The registry is built once at startup; approving or editing a spec
+refreshes it immediately (`POST /specs/{id}/approve`, `PUT /specs/{id}`),
+so a newly-approved spec's verdict is queryable right away — no restart
+needed.
+
+Smoke test (backend running):
+
+```bash
+curl -s -X POST localhost:8000/api/v1/specs -H 'content-type: application/json' -d '{
+  "spec": {
+    "meta": {"name": "IV rank demo", "category": "options", "origin": "manual"},
+    "universe": {"underlyings": ["SPY"], "sec_type": "option"},
+    "structure": [],
+    "entry": [{"kind": "iv_rank_gte", "params": {"value": 20}}],
+    "exit": {"profit_target_pct_credit": 50.0, "stop_loss_x_credit": 2.0, "time_exit_dte": 21}
+  }
+}'                                                       # note the returned id
+curl -s -X POST localhost:8000/api/v1/specs/<id>/approve
+curl -s localhost:8000/api/v1/strategies                # spec:iv-rank-demo now listed
+curl -s localhost:8000/api/v1/specs/<id>/verdict         # {verdict, checks:[{kind,pass,observed,detail}]}
 ```
 
 ## Scheduler

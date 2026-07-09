@@ -37,10 +37,22 @@ class YFinanceProvider:
 
         return yf.Ticker(symbol)
 
+    async def _run(self, fn, *args):
+        """Every sync yfinance call goes through here so network/library
+        failures (proxy blocks, HTTP errors, yfinance's own exceptions)
+        normalize to ProviderError once, instead of every caller of this
+        provider needing to catch yfinance-specific exception types."""
+        try:
+            return await asyncio.to_thread(fn, *args)
+        except ProviderError:
+            raise
+        except Exception as exc:  # noqa: BLE001 - normalize any failure
+            raise ProviderError(f"yfinance request failed: {exc}") from exc
+
     # ------------------------------------------------------------- quote
 
     async def quote(self, symbol: str) -> dict:
-        return await asyncio.to_thread(self._quote, symbol)
+        return await self._run(self._quote, symbol)
 
     def _quote(self, symbol: str) -> dict:
         info = self._ticker(symbol).fast_info
@@ -65,7 +77,7 @@ class YFinanceProvider:
     # -------------------------------------------------------------- bars
 
     async def bars(self, symbol: str, period: str = "6mo", interval: str = "1d") -> list[dict]:
-        return await asyncio.to_thread(self._bars, symbol, period, interval)
+        return await self._run(self._bars, symbol, period, interval)
 
     def _bars(self, symbol: str, period: str, interval: str) -> list[dict]:
         df = self._ticker(symbol).history(period=period, interval=interval, auto_adjust=False)
@@ -91,7 +103,7 @@ class YFinanceProvider:
     # ------------------------------------------------------------- chain
 
     async def expiries(self, symbol: str) -> list[str]:
-        return await asyncio.to_thread(self._expiries, symbol)
+        return await self._run(self._expiries, symbol)
 
     def _expiries(self, symbol: str) -> list[str]:
         expiries = list(self._ticker(symbol).options or ())
@@ -100,7 +112,7 @@ class YFinanceProvider:
         return expiries
 
     async def chain(self, symbol: str, expiry: str) -> list[dict]:
-        return await asyncio.to_thread(self._chain, symbol, expiry)
+        return await self._run(self._chain, symbol, expiry)
 
     def _chain(self, symbol: str, expiry: str) -> list[dict]:
         oc = self._ticker(symbol).option_chain(expiry)

@@ -19,7 +19,8 @@ runs on Pages; you point the static frontend at your own backend URL.
 | VIX hedge screener + alerts + order tickets | ✅ needs backend + IB Gateway | `#/screener`, `#/alerts` |
 | Strategy library (spec DB + doc/payoff pages) | ✅ Phase 1, needs backend | `#/strategies` — a seeded 45-DTE put credit spread appears; view its doc + payoff, edit it, approve it |
 | Provider-labeled market data + option analytics | ✅ Phase 2, needs backend | `#/chain` — option chain with a source switcher (yfinance free / IBKR), IV + greeks, provenance badge; `POST /analytics/structure` gives PoP/expected profit; nightly job syncs ATM-IV history from IBKR's IV index for `/marketdata/ivrank` |
-| Backtesting, bots, journal, portfolio… | 🔜 phases 3–18 | see the plan |
+| Spec interpreter — approved specs run as real strategies | ✅ Phase 3, needs backend | `#/strategies/{id}` — approve a spec and it appears in the registry (`spec:<slug>`); the Entry rules table gains a live ENTER/WAIT verdict with per-condition observed values, refreshed on every page load |
+| Backtesting, bots, journal, portfolio… | 🔜 phases 4–18 | see the plan |
 
 ---
 

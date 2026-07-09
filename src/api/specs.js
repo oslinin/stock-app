@@ -12,3 +12,5 @@ export const getSpecDoc = (id, params = {}) =>
   api().get(`/specs/${id}/doc`, { params }).then((r) => r.data);
 export const getSpecPayoff = (id, params = {}) =>
   api().get(`/specs/${id}/payoff`, { params }).then((r) => r.data);
+export const getSpecVerdict = (id) =>
+  api().get(`/specs/${id}/verdict`).then((r) => r.data);
