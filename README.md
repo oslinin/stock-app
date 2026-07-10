@@ -24,7 +24,8 @@ runs on Pages; you point the static frontend at your own backend URL.
 | Portfolio view | ✅ Phase 5, needs backend | `#/portfolio` — IBKR live positions + Fidelity CSV upload, merged; grouping toggle, aggregate greeks + beta-weighted delta, forward-looking CVaR risk tiles |
 | Paper bot | ✅ Phase 6, needs backend + IB Gateway paper | `#/bots` — create a bot from an approved, fully-specified spec; it ticks every minute in RTH (FLAT → entry conditions → risk gate → paper fill); kill switch cancels pending orders. Entry-through-fill only — exit/adjustment management isn't built yet |
 | Backtesting (local + Option Omega bridge + robustness) | ✅ Phase 10, needs backend (+ optopsy worker for the local engine) | `#/backtests` — compile a spec to an optopsy strategy or an OO setup sheet, queue/import a run, view metrics, run bootstrap/MCPT robustness. The optopsy worker isn't verified against real historical data from this sandbox — see backend/README.md |
-| LLM extraction, journal, Hyperliquid, live trading, GEX/edge, assistant… | 🔜 phases 7–9, 11–18 | see the plan — 7/9 need an Anthropic/Gemini key, 12 needs an IBKR Flex token, 14 needs a Hyperliquid agent-wallet key |
+| PWA + mobile + push | ✅ Phase 18 | Installable (Chrome "Add to Home screen"); every page checked for mobile (390px) horizontal overflow; push alerts via ntfy — set `NTFY_URL` and subscribe the ntfy Android app to your topic. Action buttons on notifications not built yet |
+| LLM extraction, oleg_eval parity harness, journal, Hyperliquid, live trading, GEX/edge, assistant… | 🔜 phases 7–9, 11–17 | see the plan — 7/9 need an Anthropic/Gemini key, 11 needs an injectable clock retrofit + real historical data to verify, 12 needs an IBKR Flex token, 14 needs a Hyperliquid agent-wallet key |
 
 ---
 

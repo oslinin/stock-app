@@ -416,6 +416,45 @@ BACKEND_URL=http://localhost:8000/api/v1 WORKER_TOKEN= uv run python worker.py
   `running` bot's state machine once. A bot-level exception is caught
   and logged; one bot's failure never stops the rest from ticking.
 
+## PWA + mobile push (Phase 18 of the trading-platform plan)
+
+The frontend is installable (`vite-plugin-pwa`: manifest + service
+worker, `registerType: "autoUpdate"`) — on Android, Chrome's "Add to
+Home screen" installs it as a standalone app. All pages are responsive
+(off-canvas drawer nav below 720px; tables scroll horizontally inside
+their own container rather than the page; `.filter-row` controls shrink
+instead of forcing viewport overflow — a real bug on the Backtests page
+found via a 390px-width horizontal-overflow sweep across every page,
+fixed by adding `min-width: 0`/`max-width: 100%` to `.filter-row
+select`, a classic flexbox shrink gotcha).
+
+Push notifications go through **ntfy** (`app/alerts/push.py`, already
+wired into the alert dispatcher — no code changes this phase):
+
+1. Pick a private topic name (treat it like a password — anyone who
+   knows it can read your notifications): e.g. `stockapp-yourname-8f2c`.
+2. Set `NTFY_URL=https://ntfy.sh/<your-topic>` in the backend's `.env`
+   (or deploy `.env` — see `../deploy/.env.example`).
+3. Install the [ntfy Android app](https://ntfy.sh/) (or iOS/desktop) and
+   subscribe to the same topic.
+4. Any alert rule with `push` in its channels (`POST /alerts` /
+   `PATCH /alerts/{id}`) now delivers to your phone.
+
+**Deferred this phase**: ntfy action buttons (approve/kill directly from
+the notification — the plan's "approve/kill works from phone via ntfy
+buttons" acceptance line is not met; ntfy supports this via an `Actions`
+header calling back to an authenticated endpoint, but wiring that up
+needs a token-scoped callback URL per bot/rule, not built here); a
+Journal page (doesn't exist yet — phases 12–13) so the ✅ line's
+"Bots/Portfolio/Journal usable at 390px" only covers Bots/Portfolio (and
+every other page, checked broadly, not narrowly to those two); Lighthouse
+PWA-installable was not run (no Lighthouse CLI in this sandbox) — the
+underlying criteria (valid manifest fetched over HTTP, service worker
+registered with the correct scope, icons present) were verified directly
+via a real Playwright browser session against a production build served
+from the correct `/stock-app/` subpath, which is what Lighthouse itself
+checks under the hood.
+
 ## Safety
 
 - `transmit=True` appears nowhere in this codebase; tickets stage only.
