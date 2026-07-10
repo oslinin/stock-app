@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse
 from .api import (
     routes_alerts,
     routes_analytics,
+    routes_backtests,
     routes_bots,
     routes_health,
     routes_marketdata,
@@ -116,6 +117,8 @@ def create_app() -> FastAPI:
     app.include_router(routes_watchlist.router, prefix=prefix)
     app.include_router(routes_portfolio.router, prefix=prefix)
     app.include_router(routes_bots.router, prefix=prefix)
+    app.include_router(routes_backtests.router, prefix=prefix)
+    app.include_router(routes_backtests.worker_router, prefix=prefix)
     return app
 
 

@@ -23,7 +23,8 @@ runs on Pages; you point the static frontend at your own backend URL.
 | Watchlist + screeners | ✅ Phase 4, needs backend | `#/watchlist` — add symbols, run a screener (expensive premium / high IV rank / Δ-DTE candidates) over the nightly `symbol_metrics` scan, open a result in the Option Chain page |
 | Portfolio view | ✅ Phase 5, needs backend | `#/portfolio` — IBKR live positions + Fidelity CSV upload, merged; grouping toggle, aggregate greeks + beta-weighted delta, forward-looking CVaR risk tiles |
 | Paper bot | ✅ Phase 6, needs backend + IB Gateway paper | `#/bots` — create a bot from an approved, fully-specified spec; it ticks every minute in RTH (FLAT → entry conditions → risk gate → paper fill); kill switch cancels pending orders. Entry-through-fill only — exit/adjustment management isn't built yet |
-| Backtesting, journal… | 🔜 phases 7–18 | see the plan |
+| Backtesting (local + Option Omega bridge + robustness) | ✅ Phase 10, needs backend (+ optopsy worker for the local engine) | `#/backtests` — compile a spec to an optopsy strategy or an OO setup sheet, queue/import a run, view metrics, run bootstrap/MCPT robustness. The optopsy worker isn't verified against real historical data from this sandbox — see backend/README.md |
+| LLM extraction, journal, Hyperliquid, live trading, GEX/edge, assistant… | 🔜 phases 7–9, 11–18 | see the plan — 7/9 need an Anthropic/Gemini key, 12 needs an IBKR Flex token, 14 needs a Hyperliquid agent-wallet key |
 
 ---
 
@@ -86,7 +87,8 @@ deployed Pages build connects to your backend.
 ### 3. Check it works
 
 Sidebar pages: **Stock Lookup**, **VIX Screener**, **Strategies**,
-**Option Chain**, **Watchlist**, **Portfolio**, **Bots**, **Alerts**. Or without the UI:
+**Backtests**, **Option Chain**, **Watchlist**, **Portfolio**, **Bots**,
+**Alerts**. Or without the UI:
 
 ```bash
 curl -s localhost:8000/api/v1/health                                 # liveness
@@ -131,8 +133,8 @@ pnpm run lint && pnpm run build
 | Path | Contents |
 |---|---|
 | `src/` | React frontend (Vite, React Router, Chart.js) |
-| `backend/` | FastAPI app: `app/specs` (strategy DB), `app/dataproviders` + `app/analytics` (market data, greeks), `app/ibkr` (gateway client), `app/screener`, `app/alerts`, `app/scheduler`; tests in `backend/tests/` |
-| `deploy/` | VPS Docker Compose stack + Caddy |
+| `backend/` | FastAPI app: `app/specs` (strategy DB), `app/dataproviders` + `app/analytics` (market data, greeks), `app/ibkr` (gateway client), `app/watchlist`, `app/portfolio`, `app/brokers` + `app/bots` (paper trading), `app/backtests` (job queue, compiler, robustness), `app/screener`, `app/alerts`, `app/scheduler`; tests in `backend/tests/`; `optopsy-worker/` is a separate AGPL-isolated package (own `pyproject.toml`) |
+| `deploy/` | VPS Docker Compose stack (backend + IB Gateway + optopsy-worker + Caddy) |
 | `docs/` | strategy rule write-ups + reference PDFs |
 | `superpowers/plan/` | implementation plans; `trading-platform.md` is the source of truth for phases 1–18 |
 

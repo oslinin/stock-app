@@ -10,6 +10,7 @@ import OptionChain from "./pages/OptionChain.jsx";
 import Watchlist from "./pages/Watchlist.jsx";
 import Portfolio from "./pages/Portfolio.jsx";
 import Bots from "./pages/Bots.jsx";
+import Backtests from "./pages/Backtests.jsx";
 import "./App.css";
 
 function App() {
@@ -56,6 +57,7 @@ function App() {
         </NavLink>
         <NavLink to="/screener">VIX Screener</NavLink>
         <NavLink to="/strategies">Strategies</NavLink>
+        <NavLink to="/backtests">Backtests</NavLink>
         <NavLink to="/chain">Option Chain</NavLink>
         <NavLink to="/watchlist">Watchlist</NavLink>
         <NavLink to="/portfolio">Portfolio</NavLink>
@@ -70,6 +72,7 @@ function App() {
           <Route path="/strategies/new" element={<SpecEditor />} />
           <Route path="/strategies/:id" element={<StrategyDetail />} />
           <Route path="/strategies/:id/edit" element={<SpecEditor />} />
+          <Route path="/backtests" element={<Backtests />} />
           <Route path="/chain" element={<OptionChain />} />
           <Route path="/watchlist" element={<Watchlist />} />
           <Route path="/portfolio" element={<Portfolio />} />

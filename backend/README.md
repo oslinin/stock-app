@@ -41,7 +41,10 @@ uv run pytest   # pure-math tests: MACD, signals, payoff, strike selection, orde
                 # watchlist scan job, Fidelity CSV parser, beta extraction,
                 # beta-weighted delta, forward-looking CVaR, bot state
                 # machine, risk gate, bot lifecycle/compile_bot, safety
-                # invariants (transmit=True gating)
+                # invariants (transmit=True gating), compile_backtest,
+                # backtest job queue, OO CSV import, metrics, robustness
+                # (MCPT/bootstrap/walk-forward), data loaders/validators,
+                # AGPL boundary (optopsy import forbidden in app/)
 ```
 
 ## Strategy library (Phase 1 of the trading-platform plan)
@@ -97,6 +100,13 @@ resolves them by saving a new version (PUT `/specs/{id}`).
 | `GET/POST /bots`, `GET /bots/{id}` | bot CRUD — creation blocked by `compile_bot()` unless the spec is fully runtime-executable |
 | `GET /bots/{id}/runs` | per-tick audit trail (position_state, action, detail) |
 | `POST /bots/{id}/start\|pause\|kill`, `POST /bots/kill-all` | lifecycle + kill switch (cancels a pending order, never flattens an open position) |
+| `GET /backtests/compile-preview?spec_id` | compile_backtest() preview — optopsy strategy/kwargs, OO setup sheet, unsupported[] |
+| `POST /backtests` | queue a job (`engine: optopsy`) — 422 with `unsupported[]` if the spec's structure isn't mapped |
+| `GET /backtests/{id}`, `/equity`, `/trades.csv` | run status/metrics, equity curve, trade list CSV |
+| `GET /backtests/{id}/setup-sheet` | Option Omega manual-bridge fields + Custom-Signals CSV |
+| `POST /backtests/import/oo?spec_id` | import an OO trade-log CSV export → `backtest_run(engine=oo_manual)` + result |
+| `POST/GET /backtests/{id}/robustness` | run/list MCPT permutation, bootstrap, or walk-forward on a completed run |
+| `POST /backtests/jobs/claim\|{id}/result\|{id}/fail` | optopsy worker's job-queue protocol (`WORKER_TOKEN` bearer, not `API_TOKEN`) |
 
 ## Market data layer (Phase 2 of the trading-platform plan)
 
@@ -307,6 +317,78 @@ curl -s -X POST localhost:8000/api/v1/bots -H 'content-type: application/json' \
 curl -s -X POST localhost:8000/api/v1/bots/<bot id>/start
 curl -s localhost:8000/api/v1/bots/<bot id>/runs
 curl -s -X POST localhost:8000/api/v1/bots/<bot id>/kill
+```
+
+## Backtesting (Phase 10 of the trading-platform plan)
+
+Two engines behind one `backtest_run` job-queue table: **optopsy**
+(local, free, AGPL — runs in a separate `optopsy-worker` process/
+container with its own `pyproject.toml` and no shared imports/DB file
+with this backend — `test_agpl_boundary.py` enforces the isolation) and
+**Option Omega** via a manual bridge (no automation by design — user
+decision, brittle + ToS risk). `compile_backtest()` maps a spec's
+structure to an optopsy strategy function + kwargs (single legs and
+2-leg same-right verticals only — `short_puts`/`long_puts`/
+`short_calls`/`long_calls`/`{short,long}_{put,call}_spread`; anything
+else, plus P&L-triggered exits (optopsy has no native PT/SL, only a
+calendar `exit_dte`), lands in `unsupported[]` — "backtest ignores: X",
+never silently dropped) and to an OO setup sheet + Custom-Signals CSV.
+
+- `backtests/service.py`: the job queue — `enqueue`/`claim`/
+  `record_result`/`record_failure`, a pure DB state machine (a job is
+  claimed once; a result can't be recorded twice; a completed run can't
+  be failed after the fact).
+- `backtests/oo_import.py`: OO trade-log CSV parser. OO's export-schema
+  docs page 403s from this sandbox, so it matches columns by
+  normalized-alias (`Date Opened`/`Opened`/`Entry Date`/...) rather than
+  one exact header string, and rejects a CSV missing a required column
+  with a clear error.
+- `backtests/metrics.py`: CAGR/win rate/expectancy/max drawdown/Sharpe/
+  trade count from a trade list + equity curve — engine-agnostic.
+- `backtests/robustness.py`: MCPT permutation test (cheaper variant —
+  random-entry-timing against the real underlying return series, not a
+  full bar-shuffle re-run of the engine), Monte Carlo bootstrap (trade
+  resampling → equity-curve percentile bands, drawdown distribution,
+  risk of ruin, losing-streak distribution), and walk-forward window
+  math (the actual per-window re-optimization runs in the optopsy
+  worker — it owns the data).
+- `backtests/data.py`: parquet cache + sanity validators (missing
+  columns, negative bid/ask, ask < bid, non-positive strikes, duplicate
+  rows, expiration before quote date) over historical chain data.
+  `fetch_dolthub_chain()` is **unverified against DoltHub's live
+  schema** — this sandbox has no outbound network to check table/column
+  names against the real `post-no-preference/options` repo; verify the
+  SQL before trusting a real run.
+- `optopsy-worker/worker.py`: polls `POST /backtests/jobs/claim`, runs
+  the compiled optopsy strategy against the cached parquet chain,
+  normalizes optopsy's raw trade-level output (`entry`/`exit`/
+  `pct_change` for single legs, `total_entry_cost`/`total_exit_proceeds`
+  for spreads — verified against a real local optopsy install, column
+  names confirmed even though a fully populated non-empty result needs
+  real historical data this sandbox doesn't have), posts the result
+  back. **Not verified end-to-end against real DoltHub data or a running
+  Docker Compose stack** — verify on your VPS before trusting it.
+
+Smoke test (backend running):
+
+```bash
+curl -s "localhost:8000/api/v1/backtests/compile-preview?spec_id=<id>" | python3 -m json.tool
+curl -s -X POST localhost:8000/api/v1/backtests -H 'content-type: application/json' \
+  -d '{"specId": <id>, "engine": "optopsy"}'                    # queues a job
+curl -s -X POST "localhost:8000/api/v1/backtests/jobs/claim?engine=optopsy"  # what the worker calls
+curl -s -X POST localhost:8000/api/v1/backtests/jobs/<run id>/result -H 'content-type: application/json' \
+  -d '{"metrics": {}, "trades": [{"entryDate":"2024-01-01","exitDate":"2024-02-01","pnl":100}], "equityCurve": [10000, 10100], "engineRaw": {}}'
+curl -s -X POST localhost:8000/api/v1/backtests/<run id>/robustness -H 'content-type: application/json' \
+  -d '{"kind": "bootstrap", "params": {"n": 2000}}'
+curl -s -F "file=@trade_log.csv" "localhost:8000/api/v1/backtests/import/oo?spec_id=<id>"
+```
+
+Running the optopsy worker locally (separate venv, AGPL isolation):
+
+```bash
+cd backend/optopsy-worker
+uv sync                                # its own pyproject.toml/uv.lock, optopsy included
+BACKEND_URL=http://localhost:8000/api/v1 WORKER_TOKEN= uv run python worker.py
 ```
 
 ## Scheduler

@@ -61,6 +61,12 @@ class Settings(BaseSettings):
     bot_max_concurrent_global: int = 10
     bot_daily_loss_halt_usd: float = 0.0  # 0 = disabled
 
+    # backtests (phase 10) — the optopsy worker is a separate process/
+    # container (AGPL isolation); it authenticates with this bearer
+    # token, not the user-facing API_TOKEN.
+    worker_token: str = ""
+    backtest_cache_dir: str = "./data/backtest_cache"
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
