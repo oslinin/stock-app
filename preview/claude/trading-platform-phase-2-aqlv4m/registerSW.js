@@ -1,0 +1,1 @@
+if('serviceWorker' in navigator) {window.addEventListener('load', () => {navigator.serviceWorker.register('/stock-app/preview/claude/trading-platform-phase-2-aqlv4m/sw.js', { scope: '/stock-app/preview/claude/trading-platform-phase-2-aqlv4m/' })})}
