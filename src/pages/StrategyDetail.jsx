@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { errorMessage } from "../api/client";
-import { approveSpec, getSpec, getSpecDoc } from "../api/specs";
+import { approveSpec, getSpec, getSpecDoc, getSpecVerdict } from "../api/specs";
 import { hasBackend } from "../config";
 import BackendOffline from "../components/BackendOffline.jsx";
 import PayoffChart from "../components/PayoffChart.jsx";
+import VerdictBadge from "../components/VerdictBadge.jsx";
 import { SectionBadges, StatusBadge } from "./Strategies.jsx";
 
 const EXIT_LABELS = {
@@ -42,6 +43,7 @@ function StrategyDetail() {
   const [connected, setConnected] = useState(hasBackend());
   const [record, setRecord] = useState(null);
   const [doc, setDoc] = useState(null);
+  const [verdict, setVerdict] = useState(null);
   const [error, setError] = useState(null);
   const [refPrice, setRefPrice] = useState(100);
 
@@ -55,6 +57,9 @@ function StrategyDetail() {
       ]);
       setRecord(spec);
       setDoc(docData);
+      // live verdict only means anything once a human has approved the
+      // spec — a draft's entry logic hasn't been reviewed yet
+      setVerdict(spec.status === "approved" ? await getSpecVerdict(id) : null);
     } catch (err) {
       setError(errorMessage(err));
     }
@@ -194,7 +199,13 @@ function StrategyDetail() {
       )}
 
       <div className="panel">
-        <h3>Entry rules</h3>
+        <div className="panel-title-row">
+          <h3>Entry rules</h3>
+          {verdict && <VerdictBadge verdict={verdict.verdict} />}
+        </div>
+        {record.status !== "approved" && (
+          <p className="muted">Live verdict appears once this spec is approved.</p>
+        )}
         {(spec.entry || []).length === 0 ? (
           <p className="warn">⚠ No entry conditions stated in source.</p>
         ) : (
@@ -204,18 +215,31 @@ function StrategyDetail() {
                 <th>Condition</th>
                 <th>Params</th>
                 <th>Source</th>
+                {verdict && <th>Live</th>}
               </tr>
             </thead>
             <tbody>
-              {spec.entry.map((cond, i) => (
-                <tr key={i}>
-                  <td>{cond.kind}</td>
-                  <td>{JSON.stringify(cond.params)}</td>
-                  <td>
-                    <Quote provenance={cond.provenance} sourceRef={sourceRef} />
-                  </td>
-                </tr>
-              ))}
+              {spec.entry.map((cond, i) => {
+                const check = verdict?.checks?.[i];
+                return (
+                  <tr key={i}>
+                    <td>{cond.kind}</td>
+                    <td>{JSON.stringify(cond.params)}</td>
+                    <td>
+                      <Quote provenance={cond.provenance} sourceRef={sourceRef} />
+                    </td>
+                    {verdict && (
+                      <td className={check?.pass ? "check-pass" : "check-fail"}>
+                        <span className="check-mark">{check?.pass ? "✓" : "✗"}</span>{" "}
+                        {check?.observed != null ? String(check.observed) : "—"}
+                        {check?.detail && (
+                          <span className="muted"> — {check.detail}</span>
+                        )}
+                      </td>
+                    )}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}

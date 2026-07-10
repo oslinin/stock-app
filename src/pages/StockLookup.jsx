@@ -2,12 +2,14 @@ import React, { useState } from "react";
 import axios from "axios";
 import { Line } from "react-chartjs-2";
 import "../chartjs.js";
+import ProvenanceBadge from "../components/ProvenanceBadge.jsx";
 
 function StockLookup() {
   const [symbol, setSymbol] = useState("");
   const [stockData, setStockData] = useState(null);
   const [chartData, setChartData] = useState(null);
   const [error, setError] = useState(null);
+  const [fetchedAt, setFetchedAt] = useState(null);
   const API_KEY = import.meta.env.VITE_API_KEY;
 
   const fetchStock = async () => {
@@ -37,9 +39,11 @@ function StockLookup() {
         setError("Symbol not found or API limit reached.");
         setStockData(null);
         setChartData(null);
+        setFetchedAt(null);
         return;
       }
       setStockData(quote);
+      setFetchedAt(new Date().toISOString());
 
       const timeSeries = timeSeriesRes.data["Time Series (Daily)"];
       if (timeSeries) {
@@ -85,7 +89,12 @@ function StockLookup() {
 
       {stockData && (
         <div className="stock-card">
-          <h2>{stockData["01. symbol"]}</h2>
+          <div className="stock-card-header">
+            <h2>{stockData["01. symbol"]}</h2>
+            <ProvenanceBadge
+              provenance={{ source: "alphavantage", asof: fetchedAt, latency: "delayed" }}
+            />
+          </div>
           <p>
             Price: <strong>${parseFloat(stockData["05. price"]).toFixed(2)}</strong>
           </p>
@@ -110,6 +119,13 @@ function StockLookup() {
           />
         </div>
       )}
+
+      <p className="muted av-credit">
+        Quotes and charts powered by{" "}
+        <a href="https://www.alphavantage.co" target="_blank" rel="noreferrer">
+          Alpha Vantage
+        </a>
+      </p>
     </div>
   );
 }

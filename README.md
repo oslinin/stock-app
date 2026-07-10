@@ -1,8 +1,13 @@
-# Stock App
+# Stock App → Personal Trading Platform
 
-A personal stock dashboard that displays real-time quotes and 30-day price charts for any stock symbol. Built following the article [Build & Publish Your First Stock App (for FREE!)](https://medium.com/@wl8380/build-publish-your-first-stock-app-for-free-df59820998aa) with a few modern tooling upgrades — now growing into a personal options/crypto trading platform (plan: `superpowers/plan/trading-platform.md`).
+A React frontend (GitHub Pages) + FastAPI/`ib_async` backend (your machine or
+a VPS, next to IB Gateway) that is growing, phase by phase, into a personal
+options/crypto trading platform: strategy database, provider-labeled market
+data, backtesting, bots, journal, portfolio. The living plan is
+[`superpowers/plan/trading-platform.md`](superpowers/plan/trading-platform.md).
 
-**Live demo:** https://oslinin.github.io/stock-app/
+**Live frontend:** https://oslinin.github.io/stock-app/ — the backend never
+runs on Pages; you point the static frontend at your own backend URL.
 
 ---
 
@@ -10,237 +15,135 @@ A personal stock dashboard that displays real-time quotes and 30-day price chart
 
 | Feature | Status | How to try it |
 |---|---|---|
-| Stock lookup (quotes + 30-day chart) | ✅ live | `#/` on the demo, or `pnpm dev` |
-| VIX hedge screener + alerts + order tickets | ✅ needs backend | `#/screener`, `#/alerts` — run `backend/` next to IB Gateway |
-| **Strategy library (spec DB + doc/payoff pages)** | ✅ Phase 1 | `#/strategies` — run the backend (no IB needed for this page), a seeded 45-DTE put credit spread appears; view its doc + payoff, edit it, approve it |
-| Provider-labeled market data, backtesting, bots, journal, portfolio… | 🔜 phases 2–18 | see `superpowers/plan/trading-platform.md` |
+| Stock lookup (quotes + 30-day chart) | ✅ live | `#/` on the demo, or `pnpm dev` (needs `VITE_API_KEY`) |
+| VIX hedge screener + alerts + order tickets | ✅ needs backend + IB Gateway | `#/screener`, `#/alerts` |
+| Strategy library (spec DB + doc/payoff pages) | ✅ Phase 1, needs backend | `#/strategies` — a seeded 45-DTE put credit spread appears; view its doc + payoff, edit it, approve it |
+| Provider-labeled market data + option analytics | ✅ Phase 2, needs backend | `#/chain` — option chain with a source switcher (yfinance free / IBKR), IV + greeks, provenance badge; `POST /analytics/structure` gives PoP/expected profit; nightly job syncs ATM-IV history from IBKR's IV index for `/marketdata/ivrank` |
+| Spec interpreter — approved specs run as real strategies | ✅ Phase 3, needs backend | `#/strategies/{id}` — approve a spec and it appears in the registry (`spec:<slug>`); the Entry rules table gains a live ENTER/WAIT verdict with per-condition observed values, refreshed on every page load |
+| Watchlist + screeners | ✅ Phase 4, needs backend | `#/watchlist` — add symbols, run a screener (expensive premium / high IV rank / Δ-DTE candidates) over the nightly `symbol_metrics` scan, open a result in the Option Chain page |
+| Portfolio view | ✅ Phase 5, needs backend | `#/portfolio` — IBKR live positions + Fidelity CSV upload, merged; grouping toggle, aggregate greeks + beta-weighted delta, forward-looking CVaR risk tiles |
+| Paper bot | ✅ Phase 6, needs backend + IB Gateway paper | `#/bots` — create a bot from an approved, fully-specified spec; it ticks every minute in RTH (FLAT → entry conditions → risk gate → paper fill); kill switch cancels pending orders. Entry-through-fill only — exit/adjustment management isn't built yet |
+| Backtesting (local + Option Omega bridge + robustness) | ✅ Phase 10, needs backend (+ optopsy worker for the local engine) | `#/backtests` — compile a spec to an optopsy strategy or an OO setup sheet, queue/import a run, view metrics, run bootstrap/MCPT robustness. The optopsy worker isn't verified against real historical data from this sandbox — see backend/README.md |
+| PWA + mobile + push | ✅ Phase 18 | Installable (Chrome "Add to Home screen"); every page checked for mobile (390px) horizontal overflow; push alerts via ntfy — set `NTFY_URL` and subscribe the ntfy Android app to your topic. Action buttons on notifications not built yet |
+| LLM extraction, oleg_eval parity harness, journal, Hyperliquid, live trading, GEX/edge, assistant… | 🔜 phases 7–9, 11–17 | see the plan — 7/9 need an Anthropic/Gemini key, 11 needs an injectable clock retrofit + real historical data to verify, 12 needs an IBKR Flex token, 14 needs a Hyperliquid agent-wallet key |
 
-### Try the strategy library (Phase 1)
+---
+
+## Run it locally
+
+### Prerequisites
+
+- **[uv](https://docs.astral.sh/uv/getting-started/installation/)** for the
+  backend (Python 3.11+ — uv installs the interpreter for you if needed)
+  and **Node 20+ with pnpm** (`corepack enable`) for the frontend
+- **IB Gateway or TWS** (optional) — only needed for the VIX screener,
+  order tickets, `?source=ibkr` market data, and IV-rank history. The
+  strategy library, yfinance market data, and option analytics work
+  without it. Paper defaults: Gateway port 4002 / TWS 7497, with API
+  connections enabled.
+
+### 1. Backend
 
 ```bash
-# backend (SQLite; IB Gateway NOT required for /specs)
 cd backend
-python -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"
-uvicorn app.main:app --reload --port 8000 --loop asyncio
+uv sync --extra dev         # creates .venv, installs from uv.lock (~10s)
+cp .env.example .env        # then edit — see below
+uv run uvicorn app.main:app --reload --port 8000 --loop asyncio
+```
 
-# frontend, in another terminal at the repo root
+`--loop asyncio` matters: ib_async, APScheduler and FastAPI must share one
+plain asyncio event loop. `uv run` uses `.venv` automatically, no manual
+activation needed.
+
+The `.env` defaults are fine for a first run without IB. Keys you may want
+to set (all documented in `backend/.env.example`):
+
+| Key | When you need it |
+|---|---|
+| `API_TOKEN` | empty = no auth (local dev); always set in production |
+| `IBKR_ENABLED` / `IBKR_PORT` | `false` to silence connect retries without a gateway; port 4002 gateway-paper, 7497 TWS-paper |
+| `ALPHAVANTAGE_API_KEY` | optional; registers the Alpha Vantage provider (free key, 25 req/day, guarded) |
+| `IV_SNAPSHOT_SYMBOLS` | symbols the nightly job keeps IV-rank history for (needs IB) |
+| `SMTP_*` / `NTFY_URL` | alert delivery |
+
+First startup creates `vix_screener.db` (SQLite, WAL) and seeds one example
+strategy spec.
+
+### 2. Frontend
+
+```bash
+# repo root, second terminal
 pnpm install
 echo "VITE_API_BASE=http://localhost:8000/api/v1" >> .env
-pnpm dev            # open the printed URL → Strategies in the sidebar
+pnpm dev                    # open the printed URL
 ```
 
-Smoke test without the UI:
+Optional, only for the stock-lookup page: add `VITE_API_KEY=<alpha vantage key>`
+to the same `.env`.
+
+Instead of `VITE_API_BASE` you can also set the backend URL (and bearer
+token) at runtime in the Screener page's settings panel — that's how the
+deployed Pages build connects to your backend.
+
+### 3. Check it works
+
+Sidebar pages: **Stock Lookup**, **VIX Screener**, **Strategies**,
+**Backtests**, **Option Chain**, **Watchlist**, **Portfolio**, **Bots**,
+**Alerts**. Or without the UI:
 
 ```bash
-curl -s localhost:8000/api/v1/specs | python3 -m json.tool          # seeded strategy
-curl -s "localhost:8000/api/v1/specs/1/payoff?reference_price=600"  # legs + breakevens
-curl -s -X POST localhost:8000/api/v1/specs/1/approve               # 422: stop loss unstated
+curl -s localhost:8000/api/v1/health                                 # liveness
+curl -s localhost:8000/api/v1/specs | python3 -m json.tool           # seeded strategy (Phase 1)
+curl -s "localhost:8000/api/v1/marketdata/quote?symbol=SPY"          # {data, provenance} (Phase 2)
+curl -s "localhost:8000/api/v1/marketdata/chain?symbol=SPY" | head   # chain + IV + greeks
+curl -s -X POST localhost:8000/api/v1/analytics/structure \
+  -H 'content-type: application/json' \
+  -d '{"legs":[{"right":"P","action":"sell","strike":95,"premium":2.0},
+               {"right":"P","action":"buy","strike":90,"premium":1.1}],
+       "spot":100,"volatility":0.25,"daysToTarget":45}'              # PoP, max P/L
 ```
 
----
+More per-feature smoke tests: [`backend/README.md`](backend/README.md).
 
-## VIX options screener
-
-The app now also ships a screener for AJ Brown's VIX hedge (call debit
-spread below the VIX future + put credit spread above it, equal $100 widths,
-net debit under $100) with MACD-arming / opening-range-confirmation entry
-verdicts, email alerts, a payoff chart, and no-auto-execute IBKR order
-tickets.
-
-- **Frontend**: the `#/screener` and `#/alerts` pages (React Router was added
-  for this; the original stock lookup lives on unchanged at `#/`).
-- **Backend**: `backend/` — FastAPI + ib_async talking to Interactive
-  Brokers. It runs on your own machine/VPS next to IB Gateway, **not** on
-  GitHub Pages; the static frontend calls it over HTTPS with a bearer token
-  you enter once in the Screener settings. See `backend/README.md`.
-- **VPS deployment**: `deploy/` — Docker Compose stack (backend + headless
-  IB Gateway + Caddy TLS). See `deploy/README.md`.
-- **Strategy rules**: `docs/strategies/vix-hedge.md`.
-
----
-
-## Deviations from the article
-
-The article uses `create-react-app` and `npm`. This repo uses:
-
-- **Vite** instead of Create React App — faster dev server, faster builds, and CRA is no longer maintained.
-- **pnpm** instead of npm — faster installs and smaller `node_modules`.
-- **GitHub Actions** instead of the `gh-pages` CLI — fully automated, no manual deploy command needed.
-- **Chart.js / react-chartjs-2** for the 30-day price chart (article's optional bonus step).
-
----
-
-## Steps from the article
-
-### Step 1 — Set up the React project
-
-The article uses `create-react-app`. With Vite the equivalent is:
+### 4. Tests
 
 ```bash
-pnpm create vite stock-app --template react
-cd stock-app
-pnpm install
-pnpm add axios
-```
-
-`axios` is used throughout the app to make HTTP requests to the Alpha Vantage API.
-
----
-
-### Step 2 — Get a free stock data API key
-
-Sign up at [alphavantage.co](https://www.alphavantage.co/support/#api-key) for a free API key. The free tier allows 25 requests per day.
-
-Store the key in a `.env` file at the project root:
-
-```
-VITE_API_KEY=your_key_here
-```
-
-Vite exposes variables prefixed with `VITE_` to client code via `import.meta.env.VITE_API_KEY`. The `.env` file is listed in `.gitignore` so the key is never committed. For the deployed build the key is injected at build time via a GitHub Actions secret (see Step 5).
-
----
-
-### Step 3 — Write the app code
-
-Replace `src/App.jsx` with the stock lookup component. The component:
-
-1. Keeps state for the search symbol, quote data, chart data, and any error message.
-2. On search, fires two parallel API calls with `Promise.all`:
-   - `GLOBAL_QUOTE` — current price, change, change percent, and volume.
-   - `TIME_SERIES_DAILY` — daily closing prices for the chart.
-3. Renders a stock card with the quote fields, or an error if the symbol is invalid or the API limit is reached.
-
-The article's original `App.js` (class component / function component with a single quote call) is the starting point; the parallel chart call is added in Step 4.
-
-Basic styling goes in `src/App.css`. The article provides a minimal stylesheet; `src/index.css` adds dark-mode support via `prefers-color-scheme`.
-
----
-
-### Step 4 — Add a stock chart (optional but cool)
-
-Install the charting libraries:
-
-```bash
-pnpm add react-chartjs-2 chart.js
-```
-
-In `App.jsx`, register the required Chart.js components and add a `<Line>` chart:
-
-```jsx
-import { Chart as ChartJS, CategoryScale, LinearScale,
-         PointElement, LineElement, Title, Tooltip, Legend } from "chart.js";
-import { Line } from "react-chartjs-2";
-
-ChartJS.register(CategoryScale, LinearScale, PointElement,
-                 LineElement, Title, Tooltip, Legend);
-```
-
-The `TIME_SERIES_DAILY` response returns up to 100 days of data keyed by date. The app slices the 30 most recent dates, reverses them into chronological order, and maps them to closing prices for the chart dataset.
-
----
-
-### Step 5 — Publish on GitHub Pages (for free)
-
-#### 5a. Push the repo to GitHub
-
-```bash
-git remote add origin https://github.com/yourusername/stock-app.git
-git branch -M main
-git push -u origin main
-```
-
-#### 5b. Set the base path for GitHub Pages
-
-Vite needs to know the sub-path under which the app will be served (`/stock-app/` in this case). `vite.config.js`:
-
-```js
-export default defineConfig(({ command }) => ({
-  plugins: [react()],
-  base: command === 'build' ? '/stock-app/' : '/',
-}))
-```
-
-Using `command` keeps the dev server at `/` while the production build uses the correct sub-path.
-
-#### 5c. Add the API key as a GitHub Actions secret
-
-Go to **Settings → Secrets and variables → Actions → New repository secret** in your GitHub repo and add `VITE_API_KEY` with your Alpha Vantage key. The build workflow injects it at build time so it is never stored in the repo.
-
-#### 5d. Create the GitHub Actions workflow
-
-The article deploys with `gh-pages -d build` run manually. This repo automates that with `.github/workflows/deploy.yml`:
-
-```yaml
-name: Deploy to GitHub Pages
-
-on:
-  push:
-    branches: [main]
-
-permissions:
-  contents: write
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-        with:
-          version: latest
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: pnpm
-
-      - run: pnpm install
-
-      - run: pnpm run build
-        env:
-          VITE_API_KEY: ${{ secrets.VITE_API_KEY }}
-
-      - uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./dist
-```
-
-Every push to `main` triggers the workflow: it installs dependencies, builds the app (injecting the API key), and publishes the `dist/` folder to the `gh-pages` branch. GitHub Pages serves from that branch automatically.
-
-#### 5e. Enable GitHub Pages
-
-Go to **Settings → Pages** in your GitHub repo and set the source to the `gh-pages` branch, root folder. The app will be live at `https://yourusername.github.io/stock-app/`.
-
----
-
-## Local development
-
-```bash
-# Install dependencies
-pnpm install
-
-# Create .env with your API key
-echo "VITE_API_KEY=your_key_here" > .env
-
-# Start the dev server
-pnpm dev
+cd backend && uv run pytest   # pure-logic suite, no network/IB required
+pnpm run lint && pnpm run build
 ```
 
 ---
 
-## Tech stack
+## Deployment
 
-| Purpose | Library / Tool |
+- **Frontend (production)**: pushes to `main` auto-deploy to
+  `https://oslinin.github.io/stock-app/` via `.github/workflows/deploy.yml`
+  (set the `VITE_API_KEY` repo secret for the stock-lookup page).
+- **Frontend (PR previews)**: pushes to any other branch auto-deploy to
+  `https://oslinin.github.io/stock-app/preview/<branch>/` via
+  `.github/workflows/deploy-preview.yml` — production is never touched;
+  the preview is removed automatically when its PR closes or merges. Also
+  runnable on demand from the Actions tab (`workflow_dispatch`).
+- **Backend + IB Gateway on a VPS**: Docker Compose stack (backend +
+  headless gateway + Caddy TLS) in [`deploy/`](deploy/README.md).
+
+---
+
+## Repo layout
+
+| Path | Contents |
 |---|---|
-| UI framework | React 19 |
-| Build tool | Vite 8 |
-| HTTP client | Axios |
-| Charting | Chart.js + react-chartjs-2 |
-| Package manager | pnpm |
-| Hosting | GitHub Pages |
-| CI/CD | GitHub Actions |
-| Stock data API | Alpha Vantage (free tier) |
+| `src/` | React frontend (Vite, React Router, Chart.js) |
+| `backend/` | FastAPI app: `app/specs` (strategy DB), `app/dataproviders` + `app/analytics` (market data, greeks), `app/ibkr` (gateway client), `app/watchlist`, `app/portfolio`, `app/brokers` + `app/bots` (paper trading), `app/backtests` (job queue, compiler, robustness), `app/screener`, `app/alerts`, `app/scheduler`; tests in `backend/tests/`; `optopsy-worker/` is a separate AGPL-isolated package (own `pyproject.toml`) |
+| `deploy/` | VPS Docker Compose stack (backend + IB Gateway + optopsy-worker + Caddy) |
+| `docs/` | strategy rule write-ups + reference PDFs |
+| `superpowers/plan/` | implementation plans; `trading-platform.md` is the source of truth for phases 1–18 |
+
+## History
+
+Started from the Medium article
+[Build & Publish Your First Stock App (for FREE!)](https://medium.com/@wl8380/build-publish-your-first-stock-app-for-free-df59820998aa)
+(the `#/` stock-lookup page), swapped CRA/npm for Vite/pnpm and manual
+deploys for GitHub Actions, then grew the VIX hedge screener and the
+trading-platform phases on top. The AJ Brown VIX hedge strategy rules live
+in [`docs/strategies/vix-hedge.md`](docs/strategies/vix-hedge.md).

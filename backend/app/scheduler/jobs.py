@@ -1,12 +1,129 @@
 from __future__ import annotations
 
 import logging
-from datetime import time
+from datetime import date, time
 
 from ..alerts.dispatcher import dispatch
 from ..ibkr.opening_hours import et_today, now_et
 
 log = logging.getLogger(__name__)
+
+
+async def iv_snapshot(providers, settings) -> None:
+    """Nightly IV-history sync into the iv_history table (idempotent per
+    symbol/day).
+
+    Reuse-first: a provider with the iv_history capability (IBKR's IV
+    index) supplies the whole daily ATM-IV series in one request — first
+    run backfills ~a year, later runs top up missing days. No provider
+    (gateway down) means no rows tonight; the next successful sync
+    backfills the gap.
+    """
+    from ..dataproviders.base import IV_HISTORY, ProviderError
+
+    try:
+        provider = providers.route(IV_HISTORY)
+    except ProviderError:
+        log.warning("iv_snapshot: no iv_history-capable provider registered, skipping")
+        return
+    for symbol in settings.iv_snapshot_symbol_list:
+        try:
+            added = await _sync_iv_history(provider, symbol)
+            log.info("iv_snapshot: %s +%d days from %s", symbol, added, provider.name)
+        except Exception as exc:  # noqa: BLE001 - jobs must never crash the loop
+            log.warning("iv_snapshot skipped for %s: %s", symbol, exc)
+
+
+async def _sync_iv_history(provider, symbol: str) -> int:
+    """Upsert a provider's daily IV series; returns how many days were new."""
+    from sqlmodel import select
+
+    from ..dataproviders.models import IVHistory
+    from ..db.session import session_scope
+
+    series = await provider.iv_history(symbol)
+    with session_scope() as session:
+        have = set(
+            session.exec(
+                select(IVHistory.date).where(IVHistory.symbol == symbol)
+            ).all()
+        )
+        added = 0
+        for point in series:
+            day = date.fromisoformat(point["date"])
+            if day in have:
+                continue
+            session.add(
+                IVHistory(
+                    symbol=symbol,
+                    date=day,
+                    atm_iv=point["iv"],
+                    underlying_px=point.get("underlying_px"),
+                    source=f"{provider.name}_iv_index",
+                )
+            )
+            added += 1
+    return added
+
+
+async def watchlist_scan_job(providers, settings) -> None:
+    """Nightly symbol_metrics sweep over the watchlist. Reuse-first: any
+    provider with a priced chain (yfinance by default) can sample it —
+    same graceful-degradation discipline as iv_snapshot: a provider
+    error skips the symbol, never crashes the job."""
+    from ..dataproviders.base import CHAIN, ProviderError
+    from ..watchlist.scan_job import watchlist_scan
+
+    try:
+        provider = providers.route(CHAIN)
+    except ProviderError:
+        log.warning("watchlist_scan: no chain-capable provider registered, skipping")
+        return
+    await watchlist_scan(provider, settings)
+
+
+async def bot_tick_job(providers, client, settings) -> None:
+    """Thin scheduler-facing wrapper — see app/bots/tick_job.py for the
+    actual per-bot orchestration (kept in bots/ alongside the runtime it
+    drives, same layering as watchlist/scan_job.py)."""
+    from ..bots.tick_job import bot_tick
+
+    await bot_tick(providers, client, settings)
+
+
+async def beta_refresh(client, settings) -> None:
+    """Weekly beta refresh: pulls each watchlist symbol's beta straight
+    from IB Gateway's fundamental-ratios feed (app/portfolio/beta.py) —
+    never computed in this process. A symbol IB has no beta for (gateway
+    down, or the account lacks the Reuters Fundamentals entitlement that
+    tick needs) is skipped, not estimated."""
+    from sqlmodel import select
+
+    from ..db.session import session_scope
+    from ..portfolio.beta import fetch_beta
+    from ..portfolio.models import BetaCache, utcnow
+    from ..watchlist.models import WatchlistItem
+
+    with session_scope() as session:
+        symbols = [w.symbol for w in session.exec(select(WatchlistItem)).all()]
+
+    for symbol in symbols:
+        beta = await fetch_beta(client, symbol)
+        if beta is None:
+            log.warning(
+                "beta_refresh: no beta available for %s (gateway down, or no "
+                "fundamentals entitlement)",
+                symbol,
+            )
+            continue
+        with session_scope() as session:
+            existing = session.exec(select(BetaCache).where(BetaCache.symbol == symbol)).first()
+            if existing:
+                existing.beta = beta
+                existing.computed_at = utcnow()
+                session.add(existing)
+            else:
+                session.add(BetaCache(symbol=symbol, beta=beta))
 
 
 async def eod_arming_scan(engine, settings) -> None:

@@ -6,6 +6,7 @@
 
 .sidebar {
   width: 200px;
+  flex-shrink: 0;
   padding: 1rem;
   border-right: 1px solid var(--border);
   display: flex;
@@ -22,7 +23,7 @@
 .sidebar a {
   color: var(--text);
   text-decoration: none;
-  padding: 0.35rem 0.6rem;
+  padding: 0.5rem 0.6rem;
   border-radius: 6px;
 }
 
@@ -36,10 +37,157 @@
   border: 1px solid var(--accent-border);
 }
 
+.sidebar a:focus-visible,
+.nav-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .content {
   flex: 1;
   min-width: 0;
   padding: 0 1.5rem 3rem;
+}
+
+/* ---- mobile top bar + off-canvas nav (hidden on desktop) ---- */
+
+.topbar {
+  display: none;
+}
+
+.nav-toggle {
+  display: none;
+}
+
+.nav-scrim {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  .layout {
+    display: block;
+  }
+
+  .topbar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    padding: 0.7rem 1rem;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .topbar-title {
+    font-weight: 600;
+    color: var(--text-h);
+  }
+
+  .nav-toggle {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg);
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .nav-toggle span {
+    display: block;
+    margin: 0 auto;
+    width: 18px;
+    height: 2px;
+    background: var(--text-h);
+    border-radius: 2px;
+    transition: transform 0.2s ease, opacity 0.2s ease;
+  }
+
+  /* hamburger -> X, a small purposeful detail instead of an abrupt swap */
+  .nav-toggle-open span:nth-child(1) {
+    transform: translateY(6px) rotate(45deg);
+  }
+  .nav-toggle-open span:nth-child(2) {
+    opacity: 0;
+  }
+  .nav-toggle-open span:nth-child(3) {
+    transform: translateY(-6px) rotate(-45deg);
+  }
+
+  .nav-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 40;
+  }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 50;
+    width: min(78vw, 280px);
+    background: var(--bg);
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.25);
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    overflow-y: auto;
+  }
+
+  .sidebar.sidebar-open {
+    transform: translateX(0);
+  }
+
+  .sidebar a {
+    padding: 0.7rem 0.75rem;
+    font-size: 1.05rem;
+  }
+
+  .content {
+    padding: 0 1rem 2.5rem;
+  }
+
+  .App {
+    padding: 1.25rem 1rem;
+  }
+
+  /* safety net for plain (non chain-scroll) tables: a table this narrow
+     scrolls its own row rather than forcing the whole page wide */
+  .legs-table:not(.chain-table) {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  .filter-row {
+    gap: 0.6rem;
+  }
+
+  .search-bar {
+    flex-wrap: wrap;
+  }
+
+  .search-bar input {
+    flex: 1;
+    min-width: 0;
+    width: auto;
+  }
+}
+
+@media (max-width: 720px) and (prefers-reduced-motion: reduce) {
+  .sidebar,
+  .nav-toggle span {
+    transition: none;
+  }
 }
 
 .App {
@@ -433,6 +581,77 @@ button.ghost:hover {
   margin-bottom: 0.75rem;
 }
 
+/* Watchlist chips */
+.watchlist-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.75rem 0;
+}
+
+.watchlist-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.5rem 0.3rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg);
+  font-size: 0.9rem;
+}
+
+.watchlist-chip button {
+  border: none;
+  background: none;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0 0.15rem;
+}
+
+/* Portfolio */
+.risk-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.75rem;
+  margin: 0.75rem 0;
+}
+
+.risk-tile {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.6rem 0.8rem;
+}
+
+.risk-tile-label {
+  font-size: 0.75rem;
+  color: var(--text);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.risk-tile-value {
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.excluded-list {
+  margin: 0.25rem 0 0;
+  padding-left: 1.2rem;
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+.position-group {
+  margin-top: 1rem;
+}
+
+.position-group h4 {
+  margin-bottom: 0.4rem;
+}
+
 /* Strategy library (specs) */
 .section-badges .badge {
   font-size: 0.7rem;
@@ -477,9 +696,12 @@ button.ghost:hover {
   gap: 0.4rem;
   font-size: 0.9rem;
   color: var(--text);
+  min-width: 0;
 }
 
 .filter-row select {
+  max-width: 100%;
+  min-width: 0;
   padding: 0.25rem 0.5rem;
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -497,4 +719,219 @@ button.ghost:hover {
   background: var(--social-bg);
   color: var(--text-h);
   margin-bottom: 0.8rem;
+}
+
+/* ---- option chain / provenance (phase 2) ---- */
+
+.provenance {
+  font-size: 0.78rem;
+  padding: 0.15rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.provenance-live {
+  border-color: #2e9e5b;
+  color: #2e9e5b;
+}
+
+.provenance-delayed {
+  border-color: #c98a1b;
+  color: #c98a1b;
+}
+
+.provenance-eod {
+  border-color: #7a7a8c;
+}
+
+.filter-row input {
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel, transparent);
+  color: var(--text-h);
+}
+
+/* the chain needs real width — 11 dense numeric columns don't fit the
+   900px narrow-page layout used by the form-style pages */
+.chain-page {
+  max-width: 1100px;
+}
+
+.chain-spot {
+  font-size: 0.9rem;
+  color: var(--text);
+  padding: 0.3rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--social-bg);
+}
+
+.chain-spot strong {
+  color: var(--text-h);
+  font-family: var(--mono);
+}
+
+.chain-hint {
+  margin-bottom: 0.5rem;
+}
+
+/* the scroll container, not the page, owns the overflow: a table this
+   wide must never be allowed to bleed past the panel uncontained */
+.chain-scroll {
+  overflow: auto;
+  max-height: 70vh;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  position: relative;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.chain-scroll::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.chain-scroll::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 6px;
+}
+
+.chain-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chain-table {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-family: var(--mono);
+  font-size: 0.88rem;
+}
+
+.chain-table th,
+.chain-table td {
+  text-align: right;
+  padding: 0.55rem 0.85rem;
+  min-width: 4.4rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--border);
+}
+
+/* the two header rows stick as ONE block (sticky on <thead> itself, not
+   per-row top offsets, which left a hairline gap that let body rows show
+   through). z-index alone is not enough here: table-layout boxes
+   (thead/tr/th are display:table-*) can paint out of DOM/z-index order,
+   so scrolled-under body text still bled through the sticky header —
+   `isolation: isolate` forces a real stacking context that wins. */
+.chain-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  isolation: isolate;
+}
+
+.chain-table thead th {
+  position: relative;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  font-weight: 600;
+}
+
+.chain-table thead tr:first-child th {
+  font-size: 0.78rem;
+  letter-spacing: 1px;
+  padding: 0.6rem 0.85rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.chain-table .side-label {
+  text-align: center;
+}
+
+.chain-table .side-label-calls {
+  color: var(--green);
+}
+
+.chain-table .side-label-puts {
+  color: var(--red);
+}
+
+.chain-table .strike-header {
+  /* solid, NOT --social-bg: that token is alpha-transparent, and a
+     translucent sticky-header cell lets scrolled body rows ghost
+     through it (the exact bug this comment is here to prevent regressing) */
+  background: var(--bg);
+}
+
+.chain-table tbody tr:nth-child(even) {
+  background: var(--social-bg);
+}
+
+.chain-table tbody tr:hover {
+  background: var(--accent-bg);
+}
+
+.chain-table .strike-cell {
+  text-align: center;
+  background: var(--social-bg);
+  color: var(--text-h);
+  font-weight: 700;
+  font-size: 0.95rem;
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  position: relative;
+}
+
+.chain-table tr.atm-row td {
+  background: var(--accent-bg);
+  border-top: 2px solid var(--accent);
+  border-bottom: 2px solid var(--accent);
+  color: var(--text-h);
+  font-weight: 600;
+}
+
+.chain-table tr.atm-row:hover td {
+  background: var(--accent-bg);
+}
+
+.atm-tag {
+  display: block;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--accent);
+  margin-top: 0.1rem;
+}
+
+/* ---- stock lookup provenance/attribution ---- */
+
+.stock-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.stock-card-header h2 {
+  margin: 0;
+}
+
+.av-credit {
+  margin-top: 1.5rem;
+}
+
+.av-credit a {
+  color: inherit;
+  text-decoration: underline;
 }

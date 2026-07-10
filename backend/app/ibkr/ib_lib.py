@@ -13,6 +13,7 @@ try:  # pragma: no cover - import shim
         Index,
         Option,
         Order,
+        Stock,
         util,
     )
 except ImportError:  # pragma: no cover
@@ -24,5 +25,6 @@ except ImportError:  # pragma: no cover
         Index,
         Option,
         Order,
+        Stock,
         util,
     )

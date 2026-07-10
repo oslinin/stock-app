@@ -1,0 +1,79 @@
+name: Deploy PR Preview to GitHub Pages
+
+# Publishes every non-main branch push to its own subpath under the same
+# Pages site — production (deploy.yml, pushes to main) is never touched.
+# Preview URL: https://oslinin.github.io/stock-app/preview/<branch>/
+on:
+  push:
+    branches-ignore: [main]
+  pull_request:
+    types: [closed]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: preview-${{ github.event.pull_request.head.ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  deploy-preview:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          # pinned to match deploy.yml — see the comment there: `latest`
+          # drifts onto pnpm 11, which needs Node >=22.13.
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install
+
+      - run: pnpm run build
+        env:
+          VITE_API_KEY: ${{ secrets.VITE_API_KEY }}
+          DEPLOY_BASE_PATH: /stock-app/preview/${{ github.ref_name }}/
+
+      - uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
+          destination_dir: preview/${{ github.ref_name }}
+          # keep_files: only touch this branch's own preview/ subfolder —
+          # leave production and every other branch's preview alone.
+          keep_files: true
+
+      - name: Summary
+        run: |
+          echo "### Preview deployed" >> "$GITHUB_STEP_SUMMARY"
+          echo "https://oslinin.github.io/stock-app/preview/${{ github.ref_name }}/" >> "$GITHUB_STEP_SUMMARY"
+
+  cleanup-preview:
+    if: github.event_name == 'pull_request' && github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+
+      - name: Remove preview for merged/closed PR branch
+        env:
+          BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: |
+          if [ -d "preview/$BRANCH" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git rm -r --ignore-unmatch "preview/$BRANCH"
+            git commit -m "Remove preview for $BRANCH"
+            git push
+          else
+            echo "no preview directory for $BRANCH, nothing to clean up"
+          fi

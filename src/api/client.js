@@ -12,7 +12,15 @@ export function api() {
 }
 
 export function errorMessage(err) {
-  if (err?.response?.data?.detail) return String(err.response.data.detail);
+  const detail = err?.response?.data?.detail;
+  if (typeof detail === "string") return detail;
+  // FastAPI's own validation errors are an array of {loc, msg, type};
+  // route-level HTTPException(422, {...}) payloads are a plain object —
+  // either way, String(detail) would just print "[object Object]".
+  if (Array.isArray(detail)) {
+    return detail.map((d) => d?.msg || JSON.stringify(d)).join("; ");
+  }
+  if (detail && typeof detail === "object") return JSON.stringify(detail);
   if (err?.response?.status) return `HTTP ${err.response.status}`;
   return err?.message || "request failed";
 }

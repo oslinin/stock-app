@@ -1,0 +1,18 @@
+[project]
+name = "optopsy-worker"
+version = "0.1.0"
+description = "AGPL-isolated optopsy backtest worker — separate process/container from the main FastAPI backend, no shared imports or DB file."
+requires-python = ">=3.11"
+dependencies = [
+    "optopsy",
+    "httpx>=0.27",
+    "pandas>=2.2",
+    "pyarrow>=17",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = ["worker"]

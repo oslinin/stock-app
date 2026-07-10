@@ -10,6 +10,7 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+dev-dist
 *.local
 .env
 
@@ -23,3 +24,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# python
+backend/.venv
+__pycache__/
+*.pyc

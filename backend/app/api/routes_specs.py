@@ -1,18 +1,43 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, ValidationError
+from sqlmodel import select
 
+from ..dataproviders.base import BARS, QUOTE, ProviderError
+from ..dataproviders.models import IVHistory
 from ..db.session import session_scope
 from ..security import require_token
 from ..specs import service
 from ..specs.compile_doc import compile_doc
+from ..specs.interpreter import MarketContext, evaluate_all
 from ..specs.models import SpecVersion, StrategySpec
 from ..specs.schema import OptionsStrategySpec
+from ..strategies.registry import build_registry
+
+VIX_SYMBOL = "^VIX"  # yfinance's symbol for the CBOE VIX index
 
 router = APIRouter(prefix="/specs", dependencies=[Depends(require_token)])
+
+
+def _refresh_registry(request: Request) -> None:
+    """approve/edit can add or drop a spec strategy from the registry —
+    it's built once at startup, so mutations that change a spec's
+    approved-ness must refresh the live snapshot, not just the DB row.
+
+    ponytail: only app.state.registry is refreshed here (read by
+    /strategies and /screener lookups, and this module's own /verdict).
+    engine.registry (a separate reference the scheduler's VIX-specific
+    jobs iterate — see scheduler/jobs.py) deliberately stays frozen at
+    boot: those jobs call VIX-only ScreenerEngine methods that assume
+    VixHedgeStrategy's shape and would break on a SpecStrategy. Ceiling:
+    spec strategies never get scheduled alert scans. Upgrade path: a
+    dedicated spec-aware scan job, not a generic engine.registry refresh.
+    """
+    request.app.state.registry = build_registry(request.app.state.settings)
 
 
 class SpecIn(BaseModel):
@@ -78,7 +103,7 @@ def get_spec(spec_id: int) -> dict:
 
 
 @router.put("/{spec_id}")
-def update_spec(spec_id: int, body: SpecIn) -> dict:
+def update_spec(spec_id: int, body: SpecIn, request: Request) -> dict:
     try:
         service.add_version(spec_id, body.spec)
     except KeyError:
@@ -88,18 +113,20 @@ def update_spec(spec_id: int, body: SpecIn) -> dict:
             record = session.get(StrategySpec, spec_id)
             record.claimed_performance_json = json.dumps(body.claimed_performance)
             session.add(record)
+    _refresh_registry(request)  # editing demotes status away from approved
     found = service.get_spec(spec_id)
     return _record_out(*found)
 
 
 @router.post("/{spec_id}/approve")
-def approve_spec(spec_id: int) -> dict:
+def approve_spec(spec_id: int, request: Request) -> dict:
     try:
         service.approve_spec(spec_id)
     except KeyError:
         raise HTTPException(404, "spec not found")
     except ValueError as exc:
         raise HTTPException(422, str(exc))
+    _refresh_registry(request)
     found = service.get_spec(spec_id)
     return _record_out(*found)
 
@@ -129,3 +156,52 @@ def spec_doc(spec_id: int, reference_price: float = 100.0) -> dict:
 def spec_payoff(spec_id: int, reference_price: float = 100.0) -> dict:
     _, spec = _load(spec_id)
     return compile_doc(spec, reference_price=reference_price)["payoff"]
+
+
+async def build_market_context(providers, symbol: str) -> MarketContext:
+    """Same layers /marketdata uses: dataproviders for quote/bars, the
+    iv_history table for IV rank. Missing pieces (dte/delta/credit% —
+    need a priced chain, not built yet) are left None; evaluators that
+    need them fail closed rather than guess."""
+    ctx = MarketContext()
+    if symbol:
+        try:
+            ctx.price = (await providers.route(QUOTE).quote(symbol))["price"]
+        except ProviderError:
+            pass
+        try:
+            bars = await providers.route(BARS).bars(symbol, period="1y", interval="1d")
+            ctx.closes = [b["close"] for b in bars]
+        except ProviderError:
+            pass
+    try:
+        ctx.vix = (await providers.route(QUOTE).quote(VIX_SYMBOL))["price"]
+    except ProviderError:
+        pass
+    with session_scope() as session:
+        rows = session.exec(
+            select(IVHistory)
+            .where(IVHistory.symbol == symbol.upper())
+            .order_by(IVHistory.date)
+        ).all()
+        if rows:
+            ctx.iv_history = [r.atm_iv for r in rows[:-1]]
+            ctx.current_iv = rows[-1].atm_iv
+    return ctx
+
+
+@router.get("/{spec_id}/verdict")
+async def spec_verdict(spec_id: int, request: Request) -> dict:
+    """Entry-condition verdict for an approved spec — the Phase 3
+    "screener": same AND-semantics interpreter a bot will run live."""
+    record, spec = _load(spec_id)
+    symbol = spec.universe.underlyings[0] if spec.universe.underlyings else ""
+    ctx = await build_market_context(request.app.state.providers, symbol)
+    passed, checks = await evaluate_all(spec.entry, ctx)
+    return {
+        "specId": spec_id,
+        "underlying": symbol,
+        "verdict": "ENTER" if passed and checks else "WAIT",
+        "checks": checks,
+        "asOf": datetime.now(timezone.utc).isoformat(),
+    }

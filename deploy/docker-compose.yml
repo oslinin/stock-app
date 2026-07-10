@@ -1,10 +1,13 @@
 # VIX screener production deployment (run on your VPS next to nothing else):
-#   backend    - FastAPI + ib_async screener API
-#   ib-gateway - headless IB Gateway with IBC auto-login (gnzsnz/ib-gateway)
-#   caddy      - HTTPS reverse proxy (Let's Encrypt for $DOMAIN)
+#   backend         - FastAPI + ib_async screener API
+#   ib-gateway      - headless IB Gateway with IBC auto-login (gnzsnz/ib-gateway)
+#   optopsy-worker  - AGPL-isolated backtest worker (own image/deps; polls
+#                      backend's job queue over the internal network only —
+#                      no shared imports, no shared DB file with backend)
+#   caddy           - HTTPS reverse proxy (Let's Encrypt for $DOMAIN)
 #
-# Only Caddy publishes ports (80/443). The IB API port stays on the internal
-# Docker network and must never be exposed publicly.
+# Only Caddy publishes ports (80/443). The IB API port and the worker's job
+# queue stay on the internal Docker network and must never be exposed publicly.
 #
 # Bring-up: cp .env.example .env && edit && docker compose up -d
 
@@ -41,6 +44,21 @@ services:
     depends_on:
       - ib-gateway
     networks: [internal]
+
+  optopsy-worker:
+    build: ../backend/optopsy-worker
+    restart: unless-stopped
+    environment:
+      BACKEND_URL: http://backend:8000/api/v1
+      WORKER_TOKEN: ${WORKER_TOKEN}
+      BACKTEST_CACHE_DIR: /data/backtest_cache
+    volumes:
+      - backend-data:/data
+    depends_on:
+      - backend
+    networks: [internal]
+    # No published ports: it only ever calls out to backend:8000, never
+    # accepts inbound connections.
 
   caddy:
     image: caddy:2
